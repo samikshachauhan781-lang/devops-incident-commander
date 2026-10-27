@@ -1,6 +1,7 @@
 // Main application layout for DevOps Incident Commander
 import React, { useState, createContext, useContext, ReactNode, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import GuideChatbot from '../components/guide/GuideChatbot';
 import {
   Menu,
   AlertTriangle,
@@ -327,6 +328,8 @@ function MainLayoutContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { title, breadcrumbs } = usePageTitle();
+  const location = useLocation();
+  const showGuideChat = location.pathname === '/';
 
   useEffect(() => {
     document.body.classList.add('app-layout-active');
@@ -357,6 +360,7 @@ function MainLayoutContent() {
           </div>
         </main>
       </div>
+      <GuideChatbot active={showGuideChat} />
     </div>
   );
 }

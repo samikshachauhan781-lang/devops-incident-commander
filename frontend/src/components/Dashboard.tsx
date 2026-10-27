@@ -89,16 +89,16 @@ export default function Dashboard() {
     [recentIncidents]
   );
 
+  let content: React.ReactNode;
+
   if (loading) {
-    return (
+    content = (
       <div className="loading-container">
         <div className="loading-spinner h-12 w-12" role="status" aria-label="Loading dashboard" />
       </div>
     );
-  }
-
-  if (error) {
-    return (
+  } else if (error) {
+    content = (
       <Card className="error-state">
         <CardContent className="error-state-content">
           <AlertTriangle className="error-state-icon" />
@@ -113,9 +113,8 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     );
-  }
-
-  return (
+  } else {
+    content = (
     <div className="page-stack">
       <PageHeader
         title="Dashboard"
@@ -327,5 +326,8 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
-  );
+    );
+  }
+
+  return content;
 }
