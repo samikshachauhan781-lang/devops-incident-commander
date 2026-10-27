@@ -1,0 +1,23 @@
+Test Summary:
+=============
+Total Tests: 137
+Passed: 137
+Failed: 0
+Skipped: 0
+
+Test Files:
+-----------
+test_ai_provider.py: 8 tests (AI provider foundation tests)
+test_ai_provider_fixed.py: 8 tests (Ollama provider tests)
+test_ai_provider_simple.py: 7 tests (Simple provider tests)
+test_app.py: 9 tests (Core API functionality)
+test_check.py: 0 tests (Test utilities)
+test_day5_patch.py: 21 tests (PATCH endpoint tests)
+test_day6_filters.py: 42 tests (Filtering and query tests)
+test_day7_timeline.py: 3 tests (Timeline and event tests)
+test_day8_analytics.py: 16 tests (Analytics overview tests)
+test_final_day3_fixed.py: 14 tests (Regression tests)
+test_fixture.py: 1 test (Test fixtures)
+test_investigation.py: 8 tests (Investigation service tests)
+
+Total: 8 + 8 + 7 + 9 + 0 + 21 + 42 + 3 + 16 + 14 + 1 + 8 = 137 tests

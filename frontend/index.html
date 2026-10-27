@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <title>DevOps Incident Commander</title>
+    <script>
+      (function () {
+        try {
+          var key = 'dic-appearance';
+          var prefs = null;
+          var raw = localStorage.getItem(key);
+          if (raw) prefs = JSON.parse(raw);
+          if (!prefs) {
+            var app = localStorage.getItem('app-settings');
+            if (app) {
+              var parsed = JSON.parse(app);
+              if (parsed.appearance) prefs = parsed.appearance;
+            }
+          }
+          var dark = prefs ? !!prefs.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var accent = (prefs && prefs.primaryColor) ? prefs.primaryColor : '#4f46e5';
+          var root = document.documentElement;
+          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          root.classList.toggle('dark', dark);
+          root.style.colorScheme = dark ? 'dark' : 'light';
+          root.style.setProperty('--color-accent', accent);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
