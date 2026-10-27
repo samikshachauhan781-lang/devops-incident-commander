@@ -1,103 +1,139 @@
 # DevOps Incident Commander
 
+An Agentic AI-based incident investigation and response platform designed to help teams track incidents, investigate potential root causes, and organize diagnostic recommendations.
+
 ## Project Overview
 
-The DevOps Incident Commander is an Agentic AI-based incident investigation and response platform designed to help teams quickly diagnose, analyze, and resolve production incidents. It combines structured incident tracking with AI-powered investigation capabilities.
+DevOps Incident Commander combines structured incident management with AI-assisted investigation capabilities.
 
-**Current MVP Scope**:
-- Incident management (CRUD operations, filtering, pagination)
-- Timeline and event tracking
-- Analytics and dashboards
-- AI-powered incident investigation with template guidance
-- Investigation timeout configuration and validation
-- Demo mode with read-only protections for safe sharing
+### Current MVP Scope
 
-**Verification Status (2026-10-26)**:
-- ✅ **Backend Tests**: 185/185 passing (19 demo-mode tests skipped — run as standalone script)
-- ✅ **Frontend Build**: TypeScript strict check + production build pass
-- ✅ **Demo Mode**: All 33 protections verified (POST/PATCH/DELETE blocked, /docs disabled)
-- ✅ **Investigation**: Mock provider returns structured results; Ollama provider implemented
-- ✅ **Templates**: 3 built-in templates with applicability checking
+- Incident CRUD operations, filtering, searching, sorting, and pagination
+- Incident timeline and event tracking
+- Analytics and dashboard views
+- AI-powered incident investigation with built-in template guidance
+- Investigation timeout validation and configuration
+- Demo mode with protections against incident write operations
+- Documentation-based dashboard guide chatbot
+- Local AI provider support through Ollama
+
+## Verification Status
+
+**Last audited: October 27, 2026**
+
+The following results were reported during the latest verification work. They describe local test runs, not a verified live production deployment.
+
+| Verification | Reported result |
+|---|---|
+| Recommended backend pytest suite | 187 passed |
+| All `test_*.py` tests | 187 passed, 19 skipped |
+| Total pytest tests collected | 206 |
+| Standalone demo-mode tests | 19 passed |
+| Frontend TypeScript check | Passed |
+| Full configured Playwright matrix | 54 passed, 0 failed |
+| Live Render deployment | Not verified |
+| Live Ollama runtime | Not verified |
+
+The 19 demo-mode tests are executed separately because they are skipped during the normal pytest run. Historical reports referring to 185, 271, or 33 tests/protections do not represent the latest verification counts.
 
 ## Prerequisites
 
-### Operating System
-- macOS, Linux, or Windows 10+
-- Python 3.11+ (tested with 3.11.9)
+- Python 3.11 or newer
+- Node.js and npm compatible with the frontend lockfile
+- Git
+- macOS, Linux, or Windows
+- Optional: Ollama installed locally for AI-powered investigations
 
-### Virtual Environment Setup
+## Installation
+
+Run these commands from the repository root.
+
+### 1. Create and activate a virtual environment
 
 ```bash
-# Create virtual environment
-cd /Users/samiksha/Desktop/devops-incident-commander
 python3 -m venv .venv
-
-# Activate environment
-# macOS/Linux
 source .venv/bin/activate
-# Windows
-.venv\Scripts\activate
 ```
 
-## Dependencies Installation
+On Windows PowerShell:
 
-The project requires these Python packages:
-
-```txt
-fastapi>=0.104.0
-pydantic>=2.4.2
-uvicorn>=0.24.0
-python-multipart>=0.0.7
-python-multipart
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-### Install Dependencies
+### 2. Install backend dependencies
 
 ```bash
-# Update pip and install requirements
-cd /Users/samiksha/Desktop/devops-incident-commander
-.venv/bin/pip install --upgrade pip
-.venv/bin/pip install fastapi pydantic uvicorn python-multipart
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-**Note**: Some dependencies are included in Python standard library (sqlite3, typing, uuid).
+Use `requirements.txt` as the source of truth for Python dependencies.
 
-## Application Setup
-
-### Start the FastAPI Server
+### 3. Install frontend dependencies
 
 ```bash
-cd /Users/samiksha/Desktop/devops-incident-commander
-.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+cd frontend
+npm ci
+cd ..
 ```
 
-**For development with auto-reload:**
+`npm ci` requires the frontend lockfile to be present and consistent with `package.json`.
+
+## Running the Application
+
+### Backend: normal development mode
+
+From the repository root:
+
 ```bash
-cd /Users/samiksha/Desktop/devops-incident-commander
-.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### Configuration
+On Windows, use the virtual environment's Python executable to launch Uvicorn:
 
-The application uses SQLite database with configurable database path:
+```powershell
+.venv\Scripts\python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-- `DB_PATH`: Path to SQLite database file (default: `incidents.db`)
+The API is available at `http://127.0.0.1:8000`.
 
-**Example:**
+### Database configuration
+
+The application uses SQLite. The `DB_PATH` environment variable selects the database path; the default is `incidents.db`.
+
+macOS/Linux example:
+
 ```bash
-export DB_PATH="/Users/samiksha/Desktop/devops-incident-commander/incidents.db"
-# Then start the server
-.venv/bin/uvicorn main:app
+export DB_PATH="$PWD/incidents.db"
+.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-## API Endpoints
+Use the appropriate environment variable syntax for your shell. Avoid committing private database files or credentials.
 
-### Root Endpoint
-```http
-GET /
+### Frontend: development server
+
+With the backend running on port 8000, open another terminal:
+
+```bash
+cd frontend
+npm run dev
 ```
 
-**Response**:
+The Vite development server uses the project's configured proxy for API requests. Check the frontend configuration if you change the backend port.
+
+## API Reference
+
+The examples below illustrate the API's intended request and response shapes. Dynamic IDs and timestamps will differ between requests.
+
+### Root and health endpoints
+
+- `GET /` — service information
+- `GET /health` — health and database status
+
+Example root response:
+
 ```json
 {
   "project_name": "DevOps Incident Commander",
@@ -107,212 +143,139 @@ GET /
 }
 ```
 
-### Health Endpoint
-```http
-GET /health
-```
+A healthy API returns a healthy status from `/health`. The timestamp and database details depend on the current runtime.
 
-**Response**:
+### Incident management
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/incidents` | Create an incident |
+| `GET` | `/incidents` | List incidents |
+| `GET` | `/incidents/{incident_id}` | Retrieve an incident |
+| `PATCH` | `/incidents/{incident_id}` | Update an incident |
+| `DELETE` | `/incidents/{incident_id}` | Delete an incident |
+
+Create an incident using `POST /incidents`:
+
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2026-10-23T06:35:44.140204+00:00",
-  "service": "devops-incident-commander-api"
-}
-```
-
-## Incident Management API
-
-### Create Incident
-```http
-POST /incidents
-Content-Type: application/json
-
-{
   "title": "Database connection timeout",
-  "description": "The database connection pool is exhausted, causing timeouts across all services",
+  "description": "The database connection pool is exhausted, causing timeouts across services.",
   "severity": "high",
   "status": "open",
   "service": "database"
 }
 ```
 
-**Response**:
-```json
-{
-  "id": "c259d59a-04cf-4300-b7dc-d96fcbab4741",
-  "title": "Database connection timeout",
-  "description": "The database connection pool is exhausted, causing timeouts across all services",
-  "severity": "high",
-  "status": "open",
-  "service": "database",
-  "created_at": "2026-10-23T06:35:44.143087+00:00",
-  "updated_at": "2026-10-23T06:35:44.143089+00:00",
-  "resolved_at": null
-}
-```
+Typical response codes include:
 
-**Response Codes**:
-- `201` - Incident created successfully
-- `422` - Validation error for invalid input
+- `201` — incident created
+- `200` — successful retrieval or update
+- `204` — successful deletion
+- `404` — incident not found
+- `422` — input validation error
 
-### List Incidents
+In demo mode, write operations are restricted; see the Demo Mode section.
+
+### Pagination, filtering, search, and sorting
+
+Example:
+
 ```http
 GET /incidents?page=1&page_size=10
 ```
 
-**Response**:
-```json
-{
-  "incidents": [
-    {
-      "id": "incident-1",
-      "title": "Database connection timeout",
-      "description": "The database connection pool is exhausted",
-      "severity": "high",
-      "status": "open",
-      "service": "database",
-      "created_at": "2026-10-23T06:35:44.143087+00:00",
-      "updated_at": "2026-10-23T06:35:44.143089+00:00",
-      "resolved_at": null
-    }
-  ],
-  "page": 1,
-  "page_size": 10,
-  "total": 1,
-  "has_more": false
-}
-```
+Supported query parameters:
 
-**Query Parameters**:
-- `page` (integer): Page number (default: 1)
-- `page_size` (integer): Page size (default: 10)
+| Parameter | Description |
+|---|---|
+| `page` | Page number |
+| `page_size` | Number of incidents per page |
+| `service` | Filter by service |
+| `severity` | Filter by severity |
+| `status` | Filter by incident status |
+| `created_after` | Filter by creation timestamp |
+| `search` | Case-insensitive search in title and description |
+| `sort_by` | `created_at`, `title`, `severity`, `status`, or `service` |
+| `order` | `asc` or `desc` |
 
-### Get Incident by ID
+Supported severity values: `low`, `medium`, `high`, `critical`.
+
+Supported status values: `open`, `investigating`, `resolved`, `closed`.
+
+Example:
+
 ```http
-GET /incidents/{incident_id}
+GET /incidents?severity=high&status=open&search=database&sort_by=created_at&order=desc
 ```
 
-**Response Codes**:
-- `200` - Incident found
-- `404` - Incident not found
+A paginated response includes `incidents`, `page`, `page_size`, `total`, and `has_more`.
 
-### Update Incident (PATCH)
-```http
-PATCH /incidents/{incident_id}
-Content-Type: application/json
+### Incident timeline
 
-{
-  "title": "Database connection pool timeout",
-  "severity": "critical"
-}
-```
-
-**Response Codes**:
-- `200` - Incident updated successfully
-- `404` - Incident not found
-- `422` - Validation error
-
-### Delete Incident
-```http
-DELETE /incidents/{incident_id}
-```
-
-**Response Codes**:
-- `204` - Incident deleted successfully
-- `404` - Incident not found
-
-## Filtering and Query API
-
-### Filter Incidents
-```http
-GET /incidents?service=database&severity=high&page=1&page_size=10
-```
-
-**Available Filters**:
-- `service`: Filter by service name
-- `severity`: Filter by severity (low, medium, high, critical)
-- `status`: Filter by status (open, investigating, resolved, closed)
-- `created_after`: Filter by creation timestamp (ISO format)
-
-**Search and Sort**:
-- `search`: Search in title and description fields (case-insensitive)
-- `sort_by`: Sort by field (created_at, title, severity, status, service)
-- `order`: Sort order (asc or desc, default: desc)
-
-### Advanced Filtering Example
-```http
-GET /incidents?severity=high&status=open&search="database"&sort_by=created_at&order=desc
-```
-
-## Timeline API
-
-### Get Incident Timeline
 ```http
 GET /incidents/{incident_id}/timeline
 ```
 
-**Response**:
+The timeline exposes recorded incident events, including applicable changes and deletion events.
+
+Example event:
+
 ```json
 {
+  "id": "event-1",
   "incident_id": "incident-1",
-  "events": [
-    {
-      "id": "event-1",
-      "incident_id": "incident-1",
-      "event_type": "severity_change",
-      "description": "Severity changed from medium to high",
-      "old_values": {"severity": "medium"},
-      "new_values": {"severity": "high"},
-      "created_at": "2026-10-23T06:35:44.143087+00:00"
-    }
-  ]
+  "event_type": "severity_change",
+  "description": "Severity changed from medium to high",
+  "old_values": {
+    "severity": "medium"
+  },
+  "new_values": {
+    "severity": "high"
+  },
+  "created_at": "2026-10-23T06:35:44.143087+00:00"
 }
 ```
 
-## Analytics API
+The timeline may retain historical events after an incident is deleted. In that case, the timeline can contain events even when the parent incident record no longer exists.
 
-### Overall Analytics
-```http
-GET /analytics/overview
-```
+### Analytics endpoints
 
-**Response**:
+- `GET /analytics/overview`
+- `GET /analytics/severity`
+- `GET /analytics/status`
+
+The following examples use a consistent hypothetical dataset of five incidents. Actual results depend on the database contents.
+
+#### Overview
+
 ```json
 {
   "total_incidents": 5,
   "open_incidents": 3,
   "investigating_incidents": 1,
-  "resolved_incidents": 2,
+  "resolved_incidents": 1,
   "closed_incidents": 0,
-  "critical_incidents": 2,
-  "resolution_rate_percent": 40.0
+  "critical_incidents": 1,
+  "resolution_rate_percent": 20.0
 }
 ```
 
-### Severity Breakdown
-```http
-GET /analytics/severity
-```
+#### Severity breakdown
 
-**Response**:
 ```json
 {
   "severity_breakdown": [
     {"severity": "low", "count": 1, "percentage": 20.0},
     {"severity": "medium", "count": 2, "percentage": 40.0},
-    {"severity": "high", "count": 1, "percentage": 30.0},
-    {"severity": "critical", "count": 1, "percentage": 10.0}
+    {"severity": "high", "count": 1, "percentage": 20.0},
+    {"severity": "critical", "count": 1, "percentage": 20.0}
   ]
 }
 ```
 
-### Status Breakdown
-```http
-GET /analytics/status
-```
+#### Status breakdown
 
-**Response**:
 ```json
 {
   "status_breakdown": [
@@ -324,301 +287,287 @@ GET /analytics/status
 }
 ```
 
-## Investigation API
+These examples are illustrative, not live API output.
 
-### Start Incident Investigation
+## AI-Powered Investigation
+
+### Start an investigation
+
 ```http
 POST /incidents/{incident_id}/investigate
 Content-Type: application/json
+```
 
+Example request:
+
+```json
 {
   "include_timeline": true,
   "include_events": true,
   "investigation_depth": "detailed",
-  "template_id": "api_failure_v1"
+  "template_id": "database_incident_v1"
 }
 ```
 
-**Optional Query Parameters**:
-- `investigation_timeout`: Investigation timeout in seconds (positive number, default: None)
+The incident must exist. The response may contain:
 
-**Response**:
-```json
-{
-  "investigation_id": "inv-123",
-  "incident_id": "incident-1",
-  "investigated_at": "2026-10-23T06:35:44.143087+00:00",
-  "incident_data": {
-    "incident_id": "incident-1",
-    "title": "Database connection timeout",
-    "description": "The database connection pool is exhausted",
-    "severity": "high",
-    "status": "open",
-    "service": "database",
-    "created_at": "2026-10-23T06:35:44.143087+00:00"
-  },
-  "evidence": {
-    "log_text": "Database connection pool exhausted after 1000 attempts",
-    "system_events": [],
-    "error_messages": ["Connection timeout", "Pool exhausted"],
-    "timestamps": ["2026-10-23T06:30:00Z", "2026-10-23T06:35:00Z"],
-    "source": "database_logs",
-    "collected_at": "2026-10-23T06:35:44.143087+00:00"
-  },
-  "ai_analysis": {
-    "success": true,
-    "analysis_type": "root_cause",
-    "confidence_score": 0.85,
-    "hypotheses": [
-      {"hypothesis": "Database connection pool configuration is insufficient", "confidence": 0.9},
-      {"hypothesis": "Network latency causing connection timeouts", "confidence": 0.7}
-    ],
-    "recommendations": ["Increase connection pool size", "Add timeout monitoring"],
-    "reasoning": "Based on connection pool metrics and error logs",
-    "metadata": {"template_applied_info": {"template_id": "api_failure_v1", "name": "API Service Failure"}},
-    "errors": [],
-    "warnings": []
-  },
-  "investigation_results": {
-    "root_cause_hypotheses": ["Database connection pool exhaustion"],
-    "supporting_evidence": ["Connection pool metrics show 100% utilization"],
-    "confidence_scores": [0.85],
-    "diagnostic_steps": ["Check database connection pool configuration", "Monitor connection pool metrics"],
-    "urgency_level": "high",
-    "investigation_type": "root_cause"
-  },
-  "investigation_metadata": {
-    "template_used": true,
-    "ai_provider": "ollama",
-    "model": "llama3.2:3b"
-  }
-}
+- Incident data and supplied evidence
+- AI analysis and reasoning
+- Root-cause hypotheses
+- Supporting evidence
+- Confidence scores
+- Diagnostic steps and recommendations
+- Urgency and investigation metadata
+
+The exact fields and results depend on the request, selected provider, template applicability, and runtime configuration. Example AI responses in this document are illustrative and should not be treated as guaranteed output.
+
+### Built-in investigation templates
+
+The application includes three built-in templates:
+
+| Template ID | Name |
+|---|---|
+| `api_failure_v1` | API Service Failure |
+| `database_incident_v1` | Database Service Incident |
+| `network_incident_v1` | Network Infrastructure Incident |
+
+Templates provide investigation guidance for common incident categories. They are intended to be immutable and thread-safe. Applicability depends on the incident and the template's rules.
+
+### AI providers
+
+| Provider | Purpose | Requirement |
+|---|---|---|
+| `mock` | Development and deterministic testing | No external AI service required |
+| `ollama` | Local model inference | Local Ollama service and configured model |
+| `openai` | Cloud model inference | Valid API key and provider configuration |
+
+The Ollama example model used in project documentation is `llama3.2:3b`. Its availability and runtime behavior must be verified in the target environment. The existence of the provider implementation does not prove that a live Ollama request has succeeded.
+
+## Investigation Timeout
+
+The investigation endpoint supports an optional `investigation_timeout` query parameter in non-demo operation.
+
+Example:
+
+```http
+POST /incidents/{incident_id}/investigate?investigation_timeout=30
 ```
 
-**Available AI Providers**:
-- `mock`: For testing and development
-- `ollama`: Local AI model (llama3.2:3b)
-- `openai`: OpenAI API (requires API key)
+A positive timeout value can be supplied. Invalid values such as zero, negative values, or non-numeric input should be rejected by request validation.
 
-### Investigation Timeout Configuration
+In demo mode, the investigation path uses the demo behavior and does not exercise the normal AI investigation timeout path. Do not interpret a successful demo investigation as verification of live provider timeout behavior.
 
-The investigation endpoint accepts an optional `investigation_timeout` query parameter:
+## Demo Mode
 
-**Valid Values**:
-- Missing: Uses default timeout (None)
-- Positive integer: `investigation_timeout=30`
-- Positive float: `investigation_timeout=30.5`
+Demo mode is intended for safe sharing and demonstration. It restricts incident write operations and disables the interactive API documentation route.
 
-**Invalid Values** (return 422 Validation Error):
-- Zero: `investigation_timeout=0`
-- Negative: `investigation_timeout=-5`
-- Non-numeric: Invalid type
+Example local setup:
+
+```bash
+python3 create_demo_db.py
+DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db \
+  .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+If `incidents_demo.db` is already seeded, follow the project's demo database setup instructions rather than unnecessarily overwriting existing data.
+
+Reported demo verification: 19 standalone demo test functions passed. Normal pytest execution skips those 19 tests because the demo test file is designed to be run separately.
+
+Run the standalone demo tests with:
+
+```bash
+DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db \
+  python3 test_demo_mode.py
+```
+
+In demo mode, write operations such as `POST`, `PATCH`, and `DELETE` are blocked according to the demo protections. The API documentation route is disabled.
+
+Demo mode is not a substitute for authentication or production access controls.
 
 ## Testing
 
-### Run All Tests
+Run the recommended backend suite from the repository root:
 
 ```bash
-# From project root
-cd /Users/samiksha/Desktop/devops-incident-commander
-python3 -m pytest test_*.py --tb=short -q
+python3 -m pytest \
+  test_app.py \
+  test_day5_patch.py \
+  test_day6_filters.py \
+  test_day7_timeline.py \
+  test_day8_analytics.py \
+  test_final_day3_fixed.py \
+  test_check.py \
+  test_fixture.py \
+  test_ai_provider.py \
+  test_investigation.py \
+  test_investigation_timeout_api.py \
+  test_template_engine.py \
+  test_template_engine_documentation.py \
+  test_template_loading_simple.py \
+  test_demo_db_setup.py \
+  -q
 ```
 
-**Test Coverage**:
-- Core API functionality: `test_app.py`
-- Incident filtering: `test_day6_filters.py`
-- Timeline operations: `test_day7_timeline.py`
-- Analytics: `test_day8_analytics.py`
-- Investigation service: `test_investigation.py`
-- Template immutability: `test_template_engine.py`
-- Timeout validation: `test_timeout_validation.py`
+Reported result during the October 27 audit: **187 passed**.
 
-### Test Structure
+Run all matching pytest files:
 
-The test suite includes:
-- **Unit tests**: Test individual components
-- **Integration tests**: Test API endpoints
-- **E2E tests**: Test full workflows
-- **Validation tests**: Test input validation
+```bash
+python3 -m pytest test_*.py -q
+```
 
-**Test Database**: Each test runs in an isolated temporary database to prevent data contamination.
+Reported result: **187 passed, 19 skipped; 206 tests collected**. The skipped demo tests are run separately using the standalone command above.
 
-## Current Limitations and Known Issues
+Run the frontend TypeScript check:
 
-### Known Issues
-None — all previously reported issues resolved as of 2026-10-26.
+```bash
+cd frontend
+npx tsc --noEmit
+```
 
-### Current Limitations (Pre-existing, Non-Regression)
-1. **API Hardcodes `constraints={}`**: The `/incidents/{id}/investigate` endpoint hardcodes `constraints={}` in the `InvestigationRequest`, preventing callers from supplying a request-specific `investigation_timeout` via API. The timeout validation logic exists in all three layers (service, Ollama, mock) but is only exercisable via direct service/provider calls or tests.
-2. **`call_with_timeout` Thread Cleanup**: The standalone utility function in `investigation_service.py` shows delayed daemon-thread cleanup when invoked directly with very short timeouts. Does not affect the investigation path (removed from `_call_ai_analysis_with_timeout()`).
-3. **Demo Mode Tests Under Pytest**: `test_demo_mode.py` is designed as a standalone script; it's skipped under pytest due to conftest fixture interference. Run manually: `DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db python3 test_demo_mode.py`
-4. **No Evidence Collection UI**: Frontend has no form to submit evidence with investigation requests (backend accepts it).
-5. **No Authentication**: API access requires no authentication (suitable for development/demo only).
+The October 27 audit reported this check passing.
 
-### Not in MVP Scope
-- Advanced monitoring integration
+### Full Playwright browser QA
+
+The configured Playwright suite matches:
+
+- `qa-*.spec.ts`
+- `browser-test.spec.ts`
+
+Debug DOM specs are excluded by the current Playwright configuration.
+
+The reported final result was **54 passed, 0 failed** after correcting the local API setup and mobile timeline layout.
+
+For the full local matrix, the frontend must be built with the API base URL embedded in the production bundle. Start the demo API first on port `8000`, then run:
+
+Terminal 1 — API:
+
+```bash
+DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db \
+  .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Terminal 2 — frontend build and browser tests:
+
+```bash
+cd frontend
+VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build
+PLAYWRIGHT_PREVIEW_PORT=4173 \
+PLAYWRIGHT_FORCE_NEW_SERVER=1 \
+npx playwright test --reporter=list
+```
+
+The full matrix includes guide-chat, browser, final workflow, theme, and responsive tests. The reported 54/54 result was obtained with this API/build/preview configuration.
+
+If a request unexpectedly fails with a CORS error, check the running API process. A stale server may not reflect the current `main.py` CORS configuration. Restart the API using the current project environment before diagnosing the frontend as the cause.
+
+The browser QA result is a local test result. It does not verify a live Render deployment.
+
+## Known Limitations
+
+- **No authentication:** API authentication and authorization are not implemented. Do not expose a writable, non-demo instance publicly without appropriate access controls.
+- **No evidence collection UI:** The backend supports investigation evidence, but the frontend does not provide a dedicated evidence-submission form.
+- **External AI dependencies:** Ollama requires a working local service and model; OpenAI requires valid credentials and provider configuration.
+- **Deployment not verified:** A successful local build or test run does not establish that the live Render services are healthy.
+- **Browser coverage is configuration-specific:** The reported 54-test result covers the specs matched by the current Playwright configuration, not excluded debug specs or every possible browser/environment.
+- **SQLite:** The application uses SQLite by default. Production deployments require deliberate choices around persistent storage, backups, access permissions, and concurrency.
+
+### Out of MVP scope
+
+- Advanced monitoring integrations
 - Multi-database support
-- User authentication/authorization
-- Advanced reporting and export features
-- Real-time websocket updates
-- Multi-tenancy support
-
-## How to Get Help
-
-### For Bugs and Issues
-1. Review existing documentation
-2. Check test failures and error logs
-3. Verify input format matches API specification
-4. Ensure all required fields are included in requests
-
-### For Development
-1. Follow the dependency installation instructions
-2. Refer to individual test files for specific use cases
-3. Check the source code for detailed implementation notes
-4. Use the `investigation_templates.py` file for template reference
+- User authentication and authorization
+- Advanced reporting and export
+- Real-time WebSocket updates
+- Multi-tenancy
 
 ## Project Structure
 
-```
+Key files and directories include:
+
+```text
 .
-├── main.py                    # FastAPI application
-├── models.py                  # Pydantic models and database operations
-├── investigation_service.py    # Investigation service with AI integration
-├── investigation_templates.py  # Built-in investigation templates (immutable)
-├── template_engine.py         # Template engine for investigation guidance
-├── ai_provider.py             # AI provider foundation
-├── ollama_provider.py         # Ollama AI provider implementation
-├── test_*.py                  # Test suite (271 tests total)
-├── project_memory/            # Development documentation
-├── README.md                  # This documentation
-└── incidents.db               # SQLite database
+├── main.py
+├── models.py
+├── investigation_service.py
+├── investigation_templates.py
+├── template_engine.py
+├── ai_provider.py
+├── ollama_provider.py
+├── requirements.txt
+├── render.yaml
+├── create_demo_db.py
+├── test_*.py
+├── frontend/
+├── project_memory/
+├── README.md
+├── incidents.db
+└── incidents_demo.db
 ```
 
-## Development Notes
-
-### Testing Strategy
-- Each test runs in an isolated temporary database
-- Tests do not modify the main `incidents.db`
-- Use `set_test_database_path()` for test database configuration
-
-### AI Provider Configuration
-- **Default**: Mock provider for testing
-- **Local**: Ollama provider (requires local Ollama instance)
-- **Cloud**: OpenAI provider (requires API key)
-
-### Database Schema
-```sql
--- incidents table
-CREATE TABLE incidents (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    severity TEXT NOT NULL,
-    status TEXT NOT NULL,
-    service TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    resolved_at TEXT
-);
-
--- incident_events table
-CREATE TABLE incident_events (
-    id TEXT PRIMARY KEY,
-    incident_id TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    description TEXT NOT NULL,
-    old_values TEXT,
-    new_values TEXT,
-    created_at TEXT NOT NULL
-);
-```
-
-### Template System
-The investigation system uses pre-built templates for common incident scenarios:
-- `api_failure_v1`: API Service Failure investigation
-- Templates are immutable and thread-safe
-- Cannot be modified after creation to ensure data integrity
-- Can be extended by adding new templates to `investigation_templates.py`
+This is a representative structure. Check the repository for the current complete file list. Local database files may be ignored by Git and should not be committed unless the deployment design explicitly requires a demo seed database.
 
 ## Security Considerations
 
-### Default Security
-- SQLite database with file permissions
-- No authentication required for API access
-- Input validation through Pydantic models
+The application uses Pydantic validation and SQLite storage, but input validation alone is not a complete security boundary.
 
-### Recommendations for Production
-- Add API authentication (JWT, OAuth2)
-- Implement rate limiting
-- Use environment variables for sensitive configuration
-- Consider PostgreSQL instead of SQLite for production
-- Implement proper database backup and recovery procedures
+Before deploying a writable instance publicly:
+
+- Add authentication and authorization.
+- Restrict CORS to trusted origins.
+- Implement rate limiting.
+- Store credentials in environment variables or a secrets manager.
+- Configure persistent database storage and backups.
+- Review logging and sensitive-data handling.
+- Test the deployment's write protections and health checks.
+
+The supplied Render configuration is intended for a demo deployment, not a fully secured production service.
 
 ## Deployment
 
-### Local development
+### Local demo
 
-**Backend (demo mode — recommended for UI work):**
-```bash
-cd devops-incident-commander
-python3 create_demo_db.py   # ensures incidents_demo.db seed exists
-DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db uvicorn main:app --host 0.0.0.0 --port 8000
-```
+Follow the Demo Mode section to start the API, then start the frontend with Vite for local development.
 
-**Frontend (Vite proxies `/api` → backend; no `VITE_API_BASE_URL` needed):**
-```bash
-cd frontend && npm install && npm run dev
-```
-
-### Public demo on Render (two services)
-
-Use **two Render services**: a Python **Web Service** (API) and a **Static Site** (React SPA). The repo includes `render.yaml` as a Blueprint template. **Do not commit secrets** — use Render environment variables only.
-
-| Concern | Approach |
-|--------|----------|
-| API URL in production | `VITE_API_BASE_URL` at **frontend build time** (see `frontend/.env.example`) |
-| CORS | `CORS_ALLOWED_ORIGINS` on the API (comma-separated frontend URL(s)) |
-| Demo safety | `DEMO_MODE=true`, read-only middleware, `/docs` disabled |
-| Database | Seed file `incidents_demo.db` in repo; runtime copy at `/tmp/incidents_demo.db` on each start |
-| `incidents.db` | **Not used** on public deploy; listed in `.gitignore` |
-| SPA routing | `render.yaml` rewrites `/*` → `/index.html` |
-| Health check | `GET /health` (set `healthCheckPath: /health` on the API service) |
-
-**Pre-deploy checklist:**
-1. Commit `incidents_demo.db` (or rely on `python3 create_demo_db.py` in the API build command).
-2. Ensure `.env`, `frontend/.env.production`, and `incidents.db` are **not** in Git (see root `.gitignore`).
-3. After first deploy, set `CORS_ALLOWED_ORIGINS` to your static site URL and redeploy the API.
-4. Set `VITE_API_BASE_URL` to your API URL (no trailing slash) and **redeploy the frontend** so Vite bakes it into the bundle.
-
-**Verify (after deploy):**
-- `curl https://<api-host>/health` → `"status":"healthy"`, `"demo_mode":true`, `"database":"/tmp/incidents_demo.db"` (or your `DEMO_DB_PATH`)
-- Open the static site: dashboard loads incidents; timeline deep links and refresh work
-- `POST /incidents` → `403` (demo read-only)
-
-See `project_memory/RENDER_DEPLOY.md` for exact Render dashboard fields, env vars, and step-by-step instructions.
-
-### Local production build (smoke test)
+For a production-style local frontend preview, build with:
 
 ```bash
-# Terminal 1 — API
-DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db uvicorn main:app --port 8000
-
-# Terminal 2 — frontend against real API origin (no localhost in bundle)
 cd frontend
-VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build && npm run preview
+VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build
+npm run preview
 ```
 
-### Production considerations (non-demo)
+Ensure the API is running and its CORS configuration permits the frontend origin.
 
-For a private, writable deployment you would disable demo mode, use `DB_PATH` with a persistent database, add authentication, and restrict CORS. **The Render blueprint in this repo is intentionally demo-only.**
+### Render demo deployment
+
+The repository includes `render.yaml` for a two-service setup:
+
+1. A Python Web Service for the FastAPI backend.
+2. A Static Site for the React frontend.
+
+Configure the environment variables and build/start commands according to `render.yaml` and `project_memory/RENDER_DEPLOY.md`.
+
+| Concern | Deployment requirement |
+|---|---|
+| Frontend API URL | Set `VITE_API_BASE_URL` to the deployed API URL at frontend build time |
+| API CORS | Set `CORS_ALLOWED_ORIGINS` to the trusted frontend origin(s) |
+| Demo safety | Enable `DEMO_MODE=true` and configure the demo database path |
+| Health check | Configure the API health check to use `/health` |
+| SPA routing | Configure the static site rewrite to serve `index.html` for frontend routes |
+| Secrets | Use platform environment variables; do not commit secrets |
+
+After deployment, verify the API health endpoint, open the frontend, check dashboard/API connectivity, test frontend deep links, and confirm demo write requests are rejected.
+
+**Live deployment status:** Render deployment was not verified during the October 27 local QA audit.
 
 ## License
 
-This project is part of the DevOps Incident Commander initiative.
-See project documentation for licensing information.
+This project is part of the DevOps Incident Commander initiative. Refer to the repository's licensing files and project documentation for applicable license terms.
 
 ---
 
-**Last Updated**: 2026-10-23
-**Version**: 1.0.0
-**Status**: MVP Ready
+**Last updated:** October 27, 2026  
+**Version:** 1.0.0  
+**Status:** MVP — local verification reported; live deployment not verified.
+
