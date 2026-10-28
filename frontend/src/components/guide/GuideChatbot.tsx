@@ -100,7 +100,7 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
     setLoading(true);
 
     try {
-      const reply = await getGuideReply(question, sessionRef.current);
+      const reply = await getGuideReply(question, sessionRef.current, { now: new Date() });
       const preserveTopic = isConversationalTopicId(reply.topicId);
       if (reply.behavior === 'answer' && reply.topicId !== 'empty' && reply.topicId !== 'fallback') {
         sessionRef.current = {

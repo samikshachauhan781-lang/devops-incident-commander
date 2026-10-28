@@ -8,10 +8,8 @@ import {
   GUIDE_FALLBACK_ANSWER,
   GUIDE_FOLLOWUP_NO_CONTEXT,
   GUIDE_FOLLOWUP_PROMPTS,
-  GUIDE_GREETING_DEFAULT,
   GUIDE_GREETING_REPEAT,
   GUIDE_GREETING_RETURN,
-  GUIDE_GREETING_TIME,
   GUIDE_INTRO_WHO,
   GUIDE_SECURITY_REFUSAL,
   GUIDE_THANKS,
@@ -19,7 +17,11 @@ import {
   GUIDE_TOPICS,
   type GuideTopicEntry,
 } from './guideChatKnowledge';
-import type { GuideReply, GuideSessionContext } from './guideChatTypes';
+import {
+  getGuideGreetingAnswerForPeriod,
+  getGuideGreetingPeriod,
+} from './guideGreetingTime';
+import type { GuideReply, GuideReplyOptions, GuideSessionContext } from './guideChatTypes';
 
 export type { GuideReply, GuideSessionContext } from './guideChatTypes';
 
@@ -199,16 +201,20 @@ function matchesAny(patterns: RegExp[], text: string): boolean {
   return patterns.some((re) => re.test(t));
 }
 
-function greetingReply(query: string, context: GuideSessionContext): GuideReply {
-  const q = normalizeGuideText(query);
-  let answer = GUIDE_GREETING_DEFAULT;
-  if (/good morning/.test(q)) answer = GUIDE_GREETING_TIME.morning;
-  else if (/good afternoon/.test(q)) answer = GUIDE_GREETING_TIME.afternoon;
-  else if (/good evening/.test(q)) answer = GUIDE_GREETING_TIME.evening;
-  else if (context.lastTopicId && !isConversationalTopicId(context.lastTopicId)) {
+function greetingReply(
+  _query: string,
+  context: GuideSessionContext,
+  options?: GuideReplyOptions,
+): GuideReply {
+  const now = options?.now ?? new Date();
+  let answer: string;
+  if (context.lastTopicId && !isConversationalTopicId(context.lastTopicId)) {
     answer = GUIDE_GREETING_RETURN;
   } else if (context.lastUserQuestion && isGreetingOnly(context.lastUserQuestion)) {
     answer = GUIDE_GREETING_REPEAT;
+  } else {
+    const period = getGuideGreetingPeriod(now);
+    answer = getGuideGreetingAnswerForPeriod(period);
   }
   return {
     topicId: 'conv-greeting',
@@ -222,10 +228,11 @@ function greetingReply(query: string, context: GuideSessionContext): GuideReply 
 function tryConversationalTurn(
   query: string,
   context: GuideSessionContext,
+  options?: GuideReplyOptions,
 ): GuideReply | null {
   const trimmed = query.trim();
   if (isGreetingOnly(trimmed)) {
-    return greetingReply(trimmed, context);
+    return greetingReply(trimmed, context, options);
   }
   if (matchesAny(INTRO_PATTERNS, trimmed)) {
     return {
@@ -396,6 +403,7 @@ function buildAnswer(topic: GuideTopicEntry): GuideReply {
 export function findGuideAnswer(
   query: string,
   context: GuideSessionContext = {},
+  options?: GuideReplyOptions,
 ): GuideReply {
   const trimmed = query.trim();
 
@@ -436,7 +444,7 @@ export function findGuideAnswer(
     };
   }
 
-  const conversational = tryConversationalTurn(trimmed, context);
+  const conversational = tryConversationalTurn(trimmed, context, options);
   if (conversational) {
     return conversational;
   }
@@ -525,7 +533,8 @@ export function replyDelayMs(): number {
 export async function getGuideReplyLocal(
   query: string,
   context?: GuideSessionContext,
+  options?: GuideReplyOptions,
 ): Promise<GuideReply> {
   await new Promise((resolve) => setTimeout(resolve, replyDelayMs()));
-  return findGuideAnswer(query, context);
+  return findGuideAnswer(query, context ?? {}, options);
 }
