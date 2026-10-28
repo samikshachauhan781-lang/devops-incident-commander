@@ -1,41 +1,72 @@
 /**
- * Documentation-based answers for the homepage guide chatbot.
- * Content reflects implemented features only (no live production monitoring claims).
+ * Documentation-based knowledge for the homepage guide assistant.
+ * Grounded in implemented product behavior only.
  */
+import type { GuideCategory } from './guideChatTypes';
 
-export type GuideTopic = {
+export type GuideTopicEntry = {
   id: string;
   title: string;
+  category: GuideCategory;
   keywords: string[];
+  phrases?: string[];
   answer: string;
+  followUpSuggestions?: string[];
+  relatedTopicIds?: string[];
 };
 
 export const GUIDE_WELCOME =
-  'Hi! I\'m the DevOps Incident Commander guide. I can explain what this app does, how to use incidents, timelines, analytics, and AI investigation—in plain English. Pick a suggestion below or type your own question.';
+  'Hi! I\'m the **DevOps Incident Commander guide** — a documentation-based assistant (not a live generative AI). I explain this app, incidents, investigations, timelines, analytics, and demo mode. Pick a suggestion or type a question.';
 
 export const GUIDE_SUGGESTED_QUESTIONS = [
-  'What is DevOps Incident Commander?',
-  'Is this a demo or real production monitoring?',
-  'How do I create and manage an incident?',
-  'What do severity levels mean?',
-  'How does AI investigation work?',
-  'How do I use the dashboard and analytics?',
+  'What does this project do?',
+  'Explain this website to me',
+  'How do I investigate a server failure?',
+  'Can this monitor my production servers automatically?',
+  'What is the difference between High and Critical severity?',
 ];
 
-export const GUIDE_TOPICS: GuideTopic[] = [
+export const GUIDE_FOLLOWUP_PROMPTS = [
+  'What is DevOps Incident Commander?',
+  'How does AI investigation work?',
+  'What happens when I click Investigate?',
+  'Is this a demo or real monitoring?',
+  'What are the platform limitations?',
+];
+
+export const GUIDE_EMPTY_PROMPT =
+  'Please type a question about the platform — for example incidents, severity, investigation, timeline, or demo mode.';
+
+export const GUIDE_CAPABILITIES = `I can help you understand **what this app does** and **how to use it**:
+
+- Project overview and navigation
+- Incidents, severity, and status
+- AI investigation workflow and results
+- Timeline, analytics, and filters
+- Demo mode vs a private deployment
+- Troubleshooting load/API errors
+
+I **cannot** access your servers, change incidents, or reveal secrets. I'm not a trained LLM — answers come from curated documentation.`;
+
+export const GUIDE_SECURITY_REFUSAL = `I can't help with **secrets, credentials, bypassing security, or destructive actions**.
+
+This guide is **read-only** and does not run commands or modify incidents. For deployment secrets, use your host's environment settings (see README / Render docs) — never paste keys into chat.
+
+Ask me about **using the UI**, **demo mode**, or **investigation workflow** instead.`;
+
+export const GUIDE_AMBIGUOUS_CLARIFY = `Your question could match a few topics. Which did you mean? Reply with one of the suggestions below, or rephrase with a bit more detail.`;
+
+export const GUIDE_FALLBACK_ANSWER =
+  'I don\'t have a specific documented answer for that. I\'m a **documentation-based guide**, not a live AI model. Try a suggested question, or ask about incidents, severity, investigation, timeline, analytics, demo mode, or limitations.';
+
+export const GUIDE_TOPICS: GuideTopicEntry[] = [
   {
     id: 'what-is',
-    title: 'What is DevOps Incident Commander?',
-    keywords: [
-      'what is',
-      'devops incident commander',
-      'about',
-      'project',
-      'platform',
-      'this website',
-      'this app',
-    ],
-    answer: `**DevOps Incident Commander** is a web app for tracking production-style incidents and running **AI-assisted investigations**.
+    title: 'Project overview',
+    category: 'overview',
+    keywords: ['what is', 'devops incident commander', 'about', 'project', 'platform', 'this website', 'this app', 'what does this project do'],
+    phrases: ['explain this website', 'explain this app to me', 'what does this do', 'tell me about this tool'],
+    answer: `**DevOps Incident Commander** is a web app for tracking production-style **incidents** and running **AI-assisted investigations**.
 
 It helps teams:
 1. **Record** incidents (title, service, severity, status, description)
@@ -43,192 +74,289 @@ It helps teams:
 3. **See trends** on the **dashboard** and **analytics** pages
 4. **Run investigations** that suggest hypotheses and next steps
 
-This UI talks to a **FastAPI backend** with a SQLite database. On public demo hosting it runs in **read-only demo mode** with sample data—not a live connection to your real servers.`,
+The React UI talks to a **FastAPI** backend with SQLite. Public demos usually run in **read-only demo mode** with sample data — not a live feed from your production servers.`,
+    followUpSuggestions: ['How does the platform work step by step?', 'Is this real production monitoring?'],
+    relatedTopicIds: ['how-works', 'demo'],
   },
   {
     id: 'purpose',
-    title: 'Purpose of this website',
+    title: 'Purpose of the platform',
+    category: 'overview',
     keywords: ['purpose', 'why', 'goal', 'use case', 'who is this for', 'help me understand'],
-    answer: `The purpose is to give you a **single place to understand and work through incidents** during an outage or drill.
+    phrases: ['why was this built', 'who should use this', 'purpose of this website', 'purpose of this platform'],
+    answer: `The purpose is a **single place to understand and work through incidents** during an outage or drill.
 
-You can:
-- See **how many** incidents are open, investigating, or resolved
-- **Filter and search** incidents by service, severity, and status
-- Open an incident for **details** and **start an AI investigation**
-- Browse a **global timeline** of events across incidents
+You can see open vs resolved work, filter incidents, open details, start **AI investigation**, and browse a **global timeline**.
 
-It is built as an **MVP / demo-friendly** product: great for learning incident response workflows and trying AI-guided analysis, not for replacing your full observability stack.`,
+It is an **MVP / demo-friendly** product for learning incident workflows — not a full observability replacement.`,
+    followUpSuggestions: ['What can this platform do?', 'What are its limitations?'],
+    relatedTopicIds: ['capabilities', 'limitations'],
+  },
+  {
+    id: 'capabilities',
+    title: 'What the guide can do',
+    category: 'faq',
+    keywords: ['what can you do', 'what can this do', 'capabilities', 'features list', 'help topics', 'what can you help', 'what can this platform'],
+    phrases: ['what can you help me with', 'what can this platform do'],
+    answer: GUIDE_CAPABILITIES,
+    followUpSuggestions: GUIDE_FOLLOWUP_PROMPTS.slice(0, 3),
   },
   {
     id: 'how-works',
     title: 'How the platform works',
-    keywords: ['how does', 'how it works', 'architecture', 'flow', 'steps', 'overview'],
-    answer: `Here is the flow, step by step:
+    category: 'navigation',
+    keywords: ['how does', 'how it works', 'architecture', 'flow', 'steps', 'overview', 'step by step'],
+    phrases: ['walk me through the site', 'how do i use this website'],
+    answer: `Step by step:
 
-1. **Dashboard (home)** — Summary metrics, recent incidents, and platform health (including whether **demo mode** is on).
-2. **Incidents** — List with filters, search, sorting, and pagination. Click a row to open **incident details**.
-3. **Incident detail** — Full description, status, and actions such as **Start Investigation** (when the API allows it).
-4. **Timeline** — Chronological **events** (created, updated, investigation started/completed, etc.) with filters.
-5. **Analytics** — Charts for severity and status breakdowns.
-6. **Settings** — Appearance (theme/accent) and other UI preferences stored locally in your browser.
+1. **Dashboard (/)** — Metrics, recent incidents, platform health (including **demo mode**).
+2. **Incidents** — List with filters, search, pagination; open a row for **details**.
+3. **Incident detail** — Description, badges, **Start Investigation** when allowed.
+4. **Timeline** — Events across incidents with filters.
+5. **Analytics** — Severity and status charts.
+6. **Settings** — Theme/accent (stored in your browser).
 
-Data is loaded through **REST API** calls from the React frontend. The chatbot is **guide-only**—it does not create or change incidents for you.`,
+Data loads via **REST API**. This chatbot is **guide-only** — it does not create or change incidents.`,
+    followUpSuggestions: ['How do I navigate the dashboard?', 'What happens when I click Investigate?'],
+    relatedTopicIds: ['navigation', 'investigate-button'],
+  },
+  {
+    id: 'navigation',
+    title: 'Dashboard and navigation',
+    category: 'navigation',
+    keywords: ['dashboard', 'filter', 'sidebar', 'navigation', 'menu', 'home page', 'recent incidents', 'timeline page'],
+    phrases: ['how do i use the dashboard', 'where is analytics', 'how do i get to incidents', 'where is the timeline page', 'where is timeline'],
+    answer: `**Dashboard** — Open **/** for metric cards, recent incidents, and health (demo mode indicator).
+
+**Incidents** — Service, severity, status filters + search. Click a row for details.
+
+**Timeline** — Cross-incident events; filter by type and search.
+
+**Analytics** — Visual breakdowns.
+
+**Settings** — Light/dark theme and accent color.
+
+Use the **sidebar** (desktop) or **mobile menu** to switch sections.`,
+    followUpSuggestions: ['How do filters work on analytics?', 'What appears on the timeline?'],
+    relatedTopicIds: ['analytics', 'timeline'],
   },
   {
     id: 'incidents',
-    title: 'Create and manage incidents',
-    keywords: [
-      'create',
-      'manage',
-      'incident',
-      'new incident',
-      'edit',
-      'delete',
-      'resolve',
-      'patch',
-      'crud',
-    ],
-    answer: `**In a full (non–read-only) deployment**, incidents are managed via the API:
-- **Create** with title, description, service, severity, and status
-- **Update** fields (for example move status from open → investigating → resolved)
-- **Delete** when appropriate
-- **List** with filters, search, sort, and pagination
+    title: 'Incident management',
+    category: 'incidents',
+    keywords: ['create', 'manage', 'incident', 'new incident', 'edit', 'delete', 'resolve', 'crud', 'lifecycle'],
+    phrases: ['how do i create an incident', 'manage incidents', 'incident lifecycle'],
+    answer: `**Non–read-only deployment:** create, update, delete, list, filter, and search incidents via the API/UI.
 
-**In demo / read-only mode** (common on public demos and Render):
-- You can **view** sample incidents and explore the UI
-- **Creating, editing, and deleting** incidents is **blocked** (the API returns forbidden)
-- Use the sample data to learn the workflows
+**Demo / read-only mode:** view **sample incidents** only; create/edit/delete return **403 Forbidden** — expected on public demos.
 
-To work with an incident: go to **Incidents** → open one → read details or start **Investigation** if enabled.`,
+Workflow: **Incidents** → open one → read details or **Start Investigation** when enabled.`,
+    followUpSuggestions: ['What do incident statuses mean?', 'What is demo mode?'],
+    relatedTopicIds: ['status-lifecycle', 'demo'],
+  },
+  {
+    id: 'status-lifecycle',
+    title: 'Incident status lifecycle',
+    category: 'status',
+    keywords: ['status', 'open', 'investigating', 'resolved', 'closed', 'lifecycle', 'state'],
+    phrases: ['what does investigating mean', 'incident states', 'when is an incident resolved'],
+    answer: `Statuses describe **where work stands**:
+
+- **Open** — Reported, not yet actively owned
+- **Investigating** — Team is actively diagnosing
+- **Resolved** — Mitigation applied; monitoring for stability
+- **Closed** — Fully done; post-incident notes may be complete
+
+Status appears on badges in lists, detail pages, timeline cards, and analytics. Changing status (when not in demo mode) is done via API/UI updates — **Start Investigation** adds analysis but does not automatically change status.`,
+    followUpSuggestions: ['How does AI investigation work?', 'Severity vs status?'],
+    relatedTopicIds: ['ai-investigation', 'severity'],
   },
   {
     id: 'severity',
     title: 'Severity levels',
-    keywords: ['severity', 'critical', 'high', 'medium', 'low', 'priority', 'urgent'],
-    answer: `Severity tells people **how serious** an incident is. This app uses four levels:
+    category: 'severity',
+    keywords: ['severity', 'critical', 'high', 'medium', 'low', 'priority', 'urgent', 'triage'],
+    phrases: ['what do severity levels mean', 'how serious is an incident'],
+    answer: `Severity is **impact / urgency** (four levels):
 
-- **Critical** — Major outage or data risk; many users affected; respond immediately
-- **High** — Significant impact; respond urgently
-- **Medium** — Limited blast radius; schedule focused work
-- **Low** — Minor issue or early warning; handle when convenient
+- **Critical** — Major outage or serious risk; respond immediately
+- **High** — Significant impact; urgent response
+- **Medium** — Limited blast radius
+- **Low** — Minor or early signal
 
-Severity appears on **badges** in lists, the dashboard, timeline cards, and analytics charts. It helps you **triage** what to look at first—it does not auto-fix anything.`,
+Shown on badges and analytics. It helps **triage** — it does not auto-remediate.`,
+    followUpSuggestions: ['Difference between High and Critical?', 'How do I filter by severity?'],
+    relatedTopicIds: ['severity-compare', 'analytics'],
+  },
+  {
+    id: 'severity-compare',
+    title: 'High vs Critical severity',
+    category: 'severity',
+    keywords: ['difference', 'high', 'critical', 'compare', 'versus', 'vs'],
+    phrases: [
+      'what is the difference between high and critical',
+      'high vs critical',
+      'critical versus high severity',
+    ],
+    answer: `**Critical** is the highest tier: widespread outage, major data/security risk, or SLA-threatening impact — all-hands response.
+
+**High** is serious but usually **narrower** than Critical — important service degraded, significant users affected, still urgent but may not be company-wide catastrophe.
+
+Both need fast response; **Critical** wins when you must drop everything. Use analytics and the dashboard to see how many of each you have in the current database.`,
+    followUpSuggestions: ['What do status levels mean?', 'How does investigation help?'],
+    relatedTopicIds: ['status-lifecycle', 'ai-investigation'],
   },
   {
     id: 'ai-investigation',
-    title: 'AI investigation',
-    keywords: [
-      'ai',
-      'investigation',
-      'investigate',
-      'ollama',
-      'mock',
-      'template',
-      'hypothesis',
+    title: 'AI investigation workflow',
+    category: 'investigation',
+    keywords: ['ai', 'investigation', 'investigate', 'ollama', 'mock', 'template', 'hypothesis', 'server failure'],
+    phrases: [
+      'how can i investigate a server failure',
+      'how does ai investigation work',
+      'run an investigation',
     ],
-    answer: `**AI investigation** helps you think through an incident after you open it on the **Incident detail** page.
+    answer: `**AI investigation** helps analyze an incident after you open it.
 
-1. Click **Start Investigation** (or use the investigate API).
-2. The backend gathers **incident context** and may apply **investigation templates** (for example API failure, database, or network patterns) when they fit.
-3. An **AI provider** analyzes the situation. In **demo mode**, a **mock provider** returns structured sample results—no external paid API key required.
-4. Optional **evidence** can be sent with the request in non-demo setups; the public UI focuses on the core flow.
+1. Open **Incidents** → select an incident → **Incident detail**.
+2. Click **Start Investigation** (or call the investigate API).
+3. Backend gathers context; **templates** (API failure, database, network) may apply when relevant.
+4. An **AI provider** returns structured analysis. In **demo mode**, a **mock** result is returned — no paid external API required.
 
-Investigation does **not** change incident status by itself; it adds **analysis** you can read and act on.`,
+Investigation **does not** auto-change incident status; it adds **analysis** for humans to verify.`,
+    followUpSuggestions: ['What happens when I click Investigate?', 'How do I read investigation results?'],
+    relatedTopicIds: ['investigate-button', 'investigation-results'],
+  },
+  {
+    id: 'investigate-button',
+    title: 'Start Investigation button',
+    category: 'investigation',
+    keywords: ['click investigate', 'start investigation', 'button', 'what happens when'],
+    phrases: ['what happens when i click investigate', 'when i press start investigation'],
+    answer: `When you click **Start Investigation** on the incident detail page:
+
+1. The frontend sends a **POST** to \`/incidents/{id}/investigate\`.
+2. In **demo mode**, the API returns a **mock investigation JSON** (no external AI call).
+3. You should see a success toast (**Investigation started**) when the request succeeds.
+4. Results include hypotheses, recommendations, and diagnostic steps to read on the response / UI.
+
+If the API blocks the request (network/CORS/demo limits), you'll see an error toast instead — the incident itself is not modified by the chatbot.`,
+    followUpSuggestions: ['How do I interpret investigation results?', 'Demo mode restrictions?'],
+    relatedTopicIds: ['investigation-results', 'demo'],
   },
   {
     id: 'investigation-results',
     title: 'Understanding investigation results',
-    keywords: [
-      'results',
-      'recommendations',
-      'findings',
-      'hypotheses',
-      'confidence',
-      'root cause',
-      'evidence',
-    ],
-    answer: `When an investigation finishes, look for:
+    category: 'results',
+    keywords: ['results', 'recommendations', 'findings', 'hypotheses', 'confidence', 'root cause', 'evidence', 'interpret'],
+    phrases: ['how do i interpret investigation results', 'read the investigation output', 'read investigation output'],
+    answer: `Look for:
 
-- **Findings / summary** — Plain-language explanation of what might be wrong
-- **Root cause hypotheses** — Ranked ideas with **confidence** scores where provided
-- **Recommendations** — Suggested next steps (check logs, rollback, scale service, etc.)
-- **Diagnostic steps** — Ordered checks your team can run
-- **Template info** — If a built-in template applied, it shows which playbook was used
+- **Summary / findings** — Plain-language explanation
+- **Root cause hypotheses** — Ranked ideas with **confidence** where provided
+- **Recommendations** — Next steps (logs, rollback, scaling, etc.)
+- **Diagnostic steps** — Ordered checks for your team
+- **Template metadata** — Which playbook applied, if any
 
-Treat these as **assistance for humans**, not automatic truth. Verify against your real logs and systems. In demo mode, responses are **illustrative** to show the UX.`,
+Treat output as **human-in-the-loop assistance**. In **demo mode**, responses are **illustrative**. Verify against real logs and systems.`,
+    followUpSuggestions: ['What investigation templates exist?', 'Can AI fix production automatically?'],
+    relatedTopicIds: ['limitations', 'ai-investigation'],
   },
   {
-    id: 'navigation',
-    title: 'Dashboard, filters, timeline, analytics',
-    keywords: [
-      'dashboard',
-      'filter',
-      'timeline',
-      'analytics',
-      'chart',
-      'search',
-      'navigation',
-      'sidebar',
-    ],
-    answer: `**Dashboard** — Open **/** for metric cards, recent incidents, activity feed, and platform health (including demo mode).
+    id: 'timeline',
+    title: 'Timeline and events',
+    category: 'timeline',
+    keywords: ['timeline', 'events', 'chronological', 'history', 'audit', 'incident created'],
+    phrases: ['what shows on the timeline', 'incident events'],
+    answer: `The **Timeline** page lists **events** across incidents (newest first), such as:
 
-**Incidents** — Use **Service**, **Severity**, and **Status** filters plus **search**. Change page size and sort as needed. Click a row for details.
+- Incident created / updated / resolved
+- Investigation started / completed
+- Alerts (when present in data)
 
-**Timeline** — See events across incidents; filter by event type and search text. Cards show severity/status and timestamps.
+Filter by **event type** and **search** text. Cards link back to the incident. Events come from the API per incident — not from this chatbot.`,
+    followUpSuggestions: ['How do filters work?', 'Dashboard vs timeline?'],
+    relatedTopicIds: ['navigation', 'analytics'],
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics and filtering',
+    category: 'analytics',
+    keywords: ['analytics', 'chart', 'breakdown', 'metrics', 'statistics', 'filtering', 'graphs'],
+    phrases: ['how do analytics work', 'severity breakdown chart'],
+    answer: `**Analytics** shows database-driven **severity** and **status** breakdowns (counts and percentages from your SQLite data).
 
-**Analytics** — Visual breakdowns of incidents by severity and status.
-
-**Settings** — Theme (light/dark) and accent color; preferences save in your browser.
-
-Use the **left sidebar** (or mobile menu) to move between sections.`,
+**Incidents** and **Timeline** pages add **filters** (service, severity, status, search). Analytics is read-only visualization — it does not auto-alert or monitor live infrastructure.`,
+    followUpSuggestions: ['Is this live monitoring?', 'What is demo mode?'],
+    relatedTopicIds: ['demo', 'severity'],
   },
   {
     id: 'demo',
-    title: 'Demo vs production',
-    keywords: [
-      'demo',
-      'production',
-      'real',
-      'monitoring',
-      'live',
-      'sample',
-      'read-only',
-      'render',
+    title: 'Demo mode and monitoring',
+    category: 'demo',
+    keywords: ['demo', 'production', 'real', 'monitoring', 'live', 'sample', 'read-only', 'render', 'automatically'],
+    phrases: [
+      'is this a demo or real production monitoring',
+      'can this monitor my production servers automatically',
+      'does it watch my servers',
     ],
-    answer: `**This public demo is not real-time production monitoring.**
+    answer: `**This public demo is not automatic production monitoring.**
 
-- It does **not** watch your live servers, metrics, or alerts automatically.
-- It uses **sample / synthetic incidents** in a demo database (\`incidents_demo.db\` on the server).
-- **Demo mode** blocks writes (create/update/delete) and disables public API docs.
-- The dashboard **health** section may show **Read-only demo** when demo mode is on.
+- It does **not** ingest live metrics/alerts from your servers by itself.
+- It uses **sample incidents** in a demo database (\`incidents_demo.db\`).
+- **Demo mode** blocks writes (create/update/delete) and hides public API docs.
+- Dashboard health may show **Read-only demo**.
 
-A private deployment could use a full database and writable API—that is a separate configuration from the public demo.`,
+A private deployment with a full DB and writable API is a separate configuration.`,
+    followUpSuggestions: ['What can I still do in demo mode?', 'Why did create incident fail?'],
+    relatedTopicIds: ['limitations', 'troubleshooting'],
   },
   {
     id: 'troubleshooting',
-    title: 'Something does not work',
-    keywords: [
-      'not work',
-      'broken',
-      'error',
-      'network',
-      'loading',
-      'failed',
-      'help',
-      'stuck',
-      'blank',
-    ],
-    answer: `Try these steps:
+    title: 'Errors and troubleshooting',
+    category: 'troubleshooting',
+    keywords: ['not work', 'broken', 'error', 'network', 'loading', 'failed', 'stuck', 'blank', 'why am i getting an error'],
+    phrases: ['why am i getting an error', 'page wont load', 'api down'],
+    answer: `Try:
 
-1. **Refresh** the page. Deep links like \`/incidents/:id\` should still load after refresh.
-2. **Check platform health** on the dashboard—if the API is down, you'll see load errors.
-3. **Local preview**: run the **API** and frontend together. Production builds need \`VITE_API_BASE_URL\` pointing at your API (see README / Render docs).
-4. **Demo limits**: if create/edit fails with forbidden, you're in **read-only demo**—that's expected.
-5. **Theme issues**: toggle appearance under **Settings**; hard refresh if the UI looks stale after an update.
+1. **Refresh** the page (deep links like \`/incidents/:id\` should recover).
+2. Check **platform health** on the dashboard — API down shows load errors.
+3. **Local/preview**: run API + frontend; production builds need \`VITE_API_BASE_URL\`.
+4. **Demo limits**: forbidden on create/edit = **read-only demo** (expected).
+5. **CORS/network**: investigation POST needs demo CORS allowing POST from your frontend origin.
 
-For code and deployment details, see the project **README** and \`project_memory/RENDER_DEPLOY.md\` in the repository.`,
+See **README** and \`project_memory/RENDER_DEPLOY.md\` for deployment details.`,
+    followUpSuggestions: ['What is demo mode?', 'How does investigation POST work?'],
+    relatedTopicIds: ['demo', 'investigate-button'],
+  },
+  {
+    id: 'limitations',
+    title: 'Platform limitations',
+    category: 'limitations',
+    keywords: ['limitation', 'cannot', 'does not', 'not support', 'missing', 'wont', "can't"],
+    phrases: ['what can this platform not do', 'what are the limitations', 'will ai fix production'],
+    answer: `Documented limitations:
+
+- **Not** a full observability stack (no always-on prod monitoring in the demo).
+- **Not** autonomous remediation — humans verify investigations.
+- **Demo mode** blocks mutating API calls except allowed paths like **investigate** mock POST.
+- **Guide chatbot** is documentation-based — not a trained generative model.
+- Some API constraint fields are not exposed on HTTP investigate (see README).
+
+Do not treat demo investigation output as ground truth for real outages.`,
+    followUpSuggestions: ['What is demo mode?', 'How does investigation work?'],
+    relatedTopicIds: ['demo', 'ai-investigation'],
+  },
+  {
+    id: 'faq-monitoring',
+    title: 'FAQ — monitoring',
+    category: 'faq',
+    keywords: ['monitor', 'alert', 'pager', 'datadog', 'prometheus', 'grafana', 'automatic'],
+    phrases: ['connect to my monitoring', 'pull alerts from'],
+    answer: `This MVP **does not ship** a built-in connector to Datadog, Prometheus, PagerDuty, etc. You **manually** create or import incidents via the API in a full deployment.
+
+The demo shows **sample data** only. Integrations would be custom work outside this guide's scope.`,
+    followUpSuggestions: ['What does this project do?', 'Demo vs production?'],
+    relatedTopicIds: ['what-is', 'demo'],
   },
 ];
-
-export const GUIDE_FALLBACK_ANSWER =
-  'I don\'t have a specific answer for that yet. I\'m a documentation-based guide (not a live AI model). Try one of the suggested questions, or ask about incidents, severity, investigation, timeline, analytics, or demo mode. For more detail, check the README in the GitHub repository.';

@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { MessageCircle, Send, X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import {
-  GUIDE_SUGGESTED_QUESTIONS,
-  GUIDE_WELCOME,
-} from '../../lib/guideChatKnowledge';
-import { getGuideReply } from '../../lib/guideChatEngine';
+import { GUIDE_SUGGESTED_QUESTIONS, GUIDE_WELCOME } from '../../lib/guideChatKnowledge';
+import { getGuideReply } from '../../lib/guideChatProvider';
+import type { GuideSessionContext } from '../../lib/guideChatTypes';
 import { cn } from '@utils/cn';
+
+const MAX_INPUT_LENGTH = 500;
 
 type ChatMessage = {
   id: string;
@@ -47,8 +47,10 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [welcomed, setWelcomed] = useState(false);
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sessionRef = useRef<GuideSessionContext>({});
 
   const scrollToBottom = useCallback(() => {
     const el = listRef.current;
@@ -85,10 +87,11 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
   }, [open]);
 
   const sendQuestion = async (text: string) => {
-    const question = text.trim();
+    const question = text.trim().slice(0, MAX_INPUT_LENGTH);
     if (!question || loading) return;
 
     setInput('');
+    setDynamicSuggestions([]);
     setMessages((prev) => [
       ...prev,
       { id: nextMessageId(), role: 'user', content: question },
@@ -96,10 +99,29 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
     setLoading(true);
 
     try {
-      const { answer } = await getGuideReply(question);
+      const reply = await getGuideReply(question, sessionRef.current);
+      if (reply.behavior === 'answer' && reply.topicId !== 'empty' && reply.topicId !== 'fallback') {
+        sessionRef.current = {
+          lastTopicId: reply.topicId,
+          lastUserQuestion: question,
+        };
+      }
       setMessages((prev) => [
         ...prev,
-        { id: nextMessageId(), role: 'assistant', content: answer },
+        { id: nextMessageId(), role: 'assistant', content: reply.answer },
+      ]);
+      if (reply.followUpSuggestions?.length) {
+        setDynamicSuggestions(reply.followUpSuggestions.slice(0, 4));
+      }
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextMessageId(),
+          role: 'assistant',
+          content:
+            'Something went wrong while generating a reply. Please try again — this guide does not modify incidents.',
+        },
       ]);
     } finally {
       setLoading(false);
@@ -110,6 +132,8 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
     e.preventDefault();
     sendQuestion(input);
   };
+
+  const showInitialSuggestions = messages.length <= 1 && !loading && dynamicSuggestions.length === 0;
 
   return (
     <div
@@ -130,7 +154,7 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
               <h2 id={`${panelId}-title`} className="guide-chat-title">
                 Guide
               </h2>
-              <p className="guide-chat-subtitle">Ask about this platform</p>
+              <p className="guide-chat-subtitle">Documentation-based assistant</p>
             </div>
             <Button
               type="button"
@@ -159,14 +183,18 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
               </div>
             ))}
             {loading && (
-              <div className="guide-chat-bubble guide-chat-bubble-assistant guide-chat-loading" aria-live="polite">
+              <div
+                className="guide-chat-bubble guide-chat-bubble-assistant guide-chat-loading"
+                aria-live="polite"
+                data-testid="guide-chat-loading"
+              >
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 <span>Thinking…</span>
               </div>
             )}
           </div>
 
-          {messages.length <= 1 && !loading && (
+          {showInitialSuggestions && (
             <div className="guide-chat-suggestions" data-testid="guide-chat-suggestions">
               {GUIDE_SUGGESTED_QUESTIONS.map((q) => (
                 <button
@@ -181,8 +209,25 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
             </div>
           )}
 
+          {!showInitialSuggestions && dynamicSuggestions.length > 0 && !loading && (
+            <div className="guide-chat-suggestions" data-testid="guide-chat-followups">
+              {dynamicSuggestions.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className="guide-chat-suggestion"
+                  onClick={() => sendQuestion(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
           <form className="guide-chat-form" onSubmit={handleSubmit}>
-            <label className="sr-only" htmlFor={`${panelId}-input`}>Your question</label>
+            <label className="sr-only" htmlFor={`${panelId}-input`}>
+              Your question
+            </label>
             <input
               id={`${panelId}-input`}
               ref={inputRef}
@@ -190,9 +235,10 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
               className="guide-chat-input"
               placeholder="Ask a question…"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value.slice(0, MAX_INPUT_LENGTH))}
               disabled={loading}
               autoComplete="off"
+              maxLength={MAX_INPUT_LENGTH}
               data-testid="guide-chat-input"
             />
             <Button
