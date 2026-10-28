@@ -77,7 +77,7 @@ test.describe('Guide chatbot (homepage)', () => {
     await expect(fab).toBeVisible({ timeout: 5000 });
     await fab.evaluate((el) => (el as HTMLButtonElement).click());
     await expect(page.getByTestId('guide-chat-panel')).toBeVisible();
-    await expect(page.getByTestId('guide-chat-messages')).toContainText('DevOps Incident Commander guide');
+    await expect(page.getByTestId('guide-chat-messages')).toContainText('documentation-based');
     await expect(page.getByTestId('guide-chat-suggestions')).toBeVisible();
   });
 
