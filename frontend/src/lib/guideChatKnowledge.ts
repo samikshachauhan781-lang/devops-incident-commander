@@ -59,6 +59,46 @@ export const GUIDE_AMBIGUOUS_CLARIFY = `Your question could match a few topics. 
 export const GUIDE_FALLBACK_ANSWER =
   'I don\'t have a specific documented answer for that. I\'m a **documentation-based guide**, not a live AI model. Try a suggested question, or ask about incidents, severity, investigation, timeline, analytics, demo mode, or limitations.';
 
+/** Short social replies — not incident actions; session keeps the prior technical topic. */
+export const GUIDE_GREETING_DEFAULT =
+  'Hello! 👋 I\'m the **DevOps Incident Commander guide** — here to explain incidents, investigations, the timeline, analytics, and demo mode. What would you like to explore first?';
+
+export const GUIDE_GREETING_TIME = {
+  morning: 'Good morning! ☀️ Ready to walk through incidents, investigations, or demo mode — what can I help with?',
+  afternoon: 'Good afternoon! I can help you navigate incidents, severity, and AI investigations. What\'s on your mind?',
+  evening: 'Good evening! 🌙 Ask me about the dashboard, timeline, or how investigation works in this app.',
+} as const;
+
+export const GUIDE_GREETING_RETURN =
+  'Welcome back — still on the same topic if you want to go deeper, or ask something new about incidents or the platform.';
+
+export const GUIDE_GREETING_REPEAT =
+  'I\'m still here. Try a specific question (for example demo mode, severity, or **Start Investigation**), or tap a suggestion below.';
+
+export const GUIDE_INTRO_WHO =
+  'I\'m the **documentation-based guide** for DevOps Incident Commander — not a live generative AI. I explain how to use this incident-management app (read-only in public demo). I don\'t create, edit, or delete incidents from chat.';
+
+export const GUIDE_THANKS =
+  'You\'re welcome! 🙂 If anything else comes up — investigations, timeline filters, or demo vs production — just ask.';
+
+export const GUIDE_THANKS_HELPFUL =
+  'Glad that helped. Want to go deeper on the same topic, or switch to analytics, timeline, or troubleshooting?';
+
+export const GUIDE_ACK =
+  'Sounds good. When you\'re ready, ask a follow-up like **tell me more** or pick a suggestion — I\'ll stay on context.';
+
+export const GUIDE_ACK_NO_CONTEXT =
+  'Got it. Ask about incidents, severity, investigation, demo mode, or pick a starter question below.';
+
+export const GUIDE_CLOSING =
+  'Goodbye for now! 👋 Reopen **Guide** anytime you need help with incidents or investigations. Take care.';
+
+export const GUIDE_CLOSING_SOFT =
+  'All set for now — I\'ll be here when you need the incident workflow or demo mode explained again.';
+
+export const GUIDE_FOLLOWUP_NO_CONTEXT =
+  'Happy to continue — what topic should we pick up? Incidents, investigation, timeline, analytics, or demo mode?';
+
 export const GUIDE_TOPICS: GuideTopicEntry[] = [
   {
     id: 'what-is',
