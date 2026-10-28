@@ -1,19 +1,23 @@
 import { test, expect } from '@playwright/test';
 import { findGuideAnswer, isConversationalTopicId } from './src/lib/guideChatEngine';
+import { localGuideTime } from './src/lib/guideGreetingTime';
 
 test.describe('Guide engine — conversational turns', () => {
   test('greetings use conv-greeting without dumping full capabilities', () => {
-    const r = findGuideAnswer('hello');
+    const r = findGuideAnswer('hello', {}, { now: localGuideTime(10, 0) });
     expect(r.topicId).toBe('conv-greeting');
     expect(r.behavior).toBe('answer');
     expect(r.answer.length).toBeLessThan(400);
-    expect(r.answer.toLowerCase()).toMatch(/hello|guide|incident/);
+    expect(r.answer.toLowerCase()).toMatch(/good morning|guide|incident/);
     expect(r.answer).not.toContain('I **cannot** access your servers');
   });
 
-  test('time-of-day greetings', () => {
-    expect(findGuideAnswer('good evening').topicId).toBe('conv-greeting');
-    expect(findGuideAnswer('good evening').answer.toLowerCase()).toContain('evening');
+  test('time-of-day greetings follow local clock, not user phrase', () => {
+    const afternoon = localGuideTime(14, 0);
+    expect(findGuideAnswer('good evening', {}, { now: afternoon }).topicId).toBe('conv-greeting');
+    expect(findGuideAnswer('good evening', {}, { now: afternoon }).answer.toLowerCase()).toContain(
+      'good afternoon',
+    );
   });
 
   test('introduction who are you', () => {

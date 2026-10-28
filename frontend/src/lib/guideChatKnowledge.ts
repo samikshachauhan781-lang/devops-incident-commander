@@ -63,10 +63,12 @@ export const GUIDE_FALLBACK_ANSWER =
 export const GUIDE_GREETING_DEFAULT =
   'Hello! 👋 I\'m the **DevOps Incident Commander guide** — here to explain incidents, investigations, the timeline, analytics, and demo mode. What would you like to explore first?';
 
+/** Time-of-day lines — selected from browser local time (see `guideGreetingTime.ts`). */
 export const GUIDE_GREETING_TIME = {
   morning: 'Good morning! ☀️ Ready to walk through incidents, investigations, or demo mode — what can I help with?',
   afternoon: 'Good afternoon! I can help you navigate incidents, severity, and AI investigations. What\'s on your mind?',
   evening: 'Good evening! 🌙 Ask me about the dashboard, timeline, or how investigation works in this app.',
+  night: 'Hello! 🌙 It\'s late — I\'m still here to explain incidents, investigations, timeline, and demo mode. What do you need?',
 } as const;
 
 export const GUIDE_GREETING_RETURN =

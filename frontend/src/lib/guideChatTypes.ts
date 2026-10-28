@@ -36,6 +36,12 @@ export type GuideSessionContext = {
   lastUserQuestion?: string;
 };
 
+/** Optional engine / provider inputs (not persisted in chat session). */
+export type GuideReplyOptions = {
+  /** Clock for time-of-day greetings; defaults to `new Date()` (browser local time). */
+  now?: Date;
+};
+
 export type GuideReply = {
   topicId: string;
   answer: string;

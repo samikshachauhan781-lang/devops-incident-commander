@@ -3,13 +3,13 @@
  * The homepage guide is a documentation-based assistant unless VITE_GUIDE_LLM_ENABLED is set
  * and a provider implementation is registered server-side in the future.
  */
-import type { GuideReply, GuideSessionContext } from './guideChatTypes';
+import type { GuideReply, GuideReplyOptions, GuideSessionContext } from './guideChatTypes';
 import { getGuideReplyLocal } from './guideChatEngine';
 
 export interface GuideChatProvider {
   readonly id: string;
   readonly label: string;
-  reply(query: string, context?: GuideSessionContext): Promise<GuideReply>;
+  reply(query: string, context?: GuideSessionContext, options?: GuideReplyOptions): Promise<GuideReply>;
 }
 
 /** Default: local retrieval + rule engine (no network). */
@@ -37,6 +37,7 @@ export function resetGuideChatProvider(): void {
 export async function getGuideReply(
   query: string,
   context?: GuideSessionContext,
+  options?: GuideReplyOptions,
 ): Promise<GuideReply> {
-  return activeProvider.reply(query, context);
+  return activeProvider.reply(query, context, options);
 }
