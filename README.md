@@ -31,6 +31,8 @@ The following results were reported during the latest verification work. They de
 | Standalone demo-mode tests | 19 passed |
 | Frontend TypeScript check | Passed |
 | Full configured Playwright matrix | 54 passed, 0 failed |
+| Guide chatbot Playwright (`qa-guide-chat*.spec.ts`) | 40 passed (reported; includes engine, UI, regression specs) |
+| Guide chatbot evaluation dataset (120 cases) | 120/120 topic match, 120/120 behavior match (reported) |
 | Live Render deployment | Not verified |
 | Live Ollama runtime | Not verified |
 
@@ -112,6 +114,19 @@ export DB_PATH="$PWD/incidents.db"
 
 Use the appropriate environment variable syntax for your shell. Avoid committing private database files or credentials.
 
+### Environment variables (reference)
+
+| Variable | Purpose |
+|----------|---------|
+| `DB_PATH` | SQLite file when **not** in demo mode (default: `incidents.db` in repo root via `models.py`) |
+| `DEMO_MODE` | `true` enables read-only API, mock investigation, disabled OpenAPI UI |
+| `DEMO_DB_PATH` | SQLite file for demo data (e.g. `incidents_demo.db` or `/tmp/incidents_demo.db` on Render) |
+| `DEMO_DB_SEED_PATH` | Seed file copied on startup (`demo_db_setup.py`; see `.env.example`) |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend URL(s) for demo CORS (`main.py`) |
+| `AI_PROVIDER` | Selects provider (`mock`, `ollama`, etc.; see `ai_provider.py`) |
+
+See `.env.example` and `project_memory/RENDER_DEPLOY.md` for Render-oriented settings.
+
 ### Frontend: development server
 
 With the backend running on port 8000, open another terminal:
@@ -139,11 +154,26 @@ Example root response:
   "project_name": "DevOps Incident Commander",
   "status": "running",
   "version": "1.0.0",
-  "welcome_message": "Agentic AI-based incident investigation and response platform"
+  "welcome_message": "Agentic AI-based incident investigation and response platform",
+  "demo_mode": false
 }
 ```
 
-A healthy API returns a healthy status from `/health`. The timestamp and database details depend on the current runtime.
+Example healthy `/health` response (200 when the database is reachable):
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-10-23T06:35:44.140204+00:00",
+  "service": "devops-incident-commander-api",
+  "demo_mode": false,
+  "database": "incidents.db"
+}
+```
+
+Returns **503** with `"status": "unhealthy"` if the database check fails (`main.py`).
+
+Previously summarized: a healthy API returns a healthy status from `/health`. The timestamp and database details depend on the current runtime.
 
 ### Incident management
 
@@ -170,10 +200,10 @@ Create an incident using `POST /incidents`:
 Typical response codes include:
 
 - `201` — incident created
-- `200` — successful retrieval or update
-- `204` — successful deletion
+- `200` — successful retrieval, update, or deletion (delete returns a JSON message body)
 - `404` — incident not found
 - `422` — input validation error
+- `403` — write blocked in demo mode (`ReadOnlyMiddleware` in `main.py`)
 
 In demo mode, write operations are restricted; see the Demo Mode section.
 
@@ -289,16 +319,31 @@ The following examples use a consistent hypothetical dataset of five incidents. 
 
 These examples are illustrative, not live API output.
 
+Analytics are **computed from the active SQLite database** (`models.py`); counts and percentages depend on your data. The severity breakdown always includes **four entries** in order: `low`, `medium`, `high`, `critical`. For each severity, `percentage` = `round((count / total_incidents) * 100, 2)` when `total_incidents > 0`, else `0.0`. Overview `resolution_rate_percent` = `round((resolved + closed) / total * 100, 2)` when `total > 0`.
+
 ## AI-Powered Investigation
 
 ### Start an investigation
 
 ```http
-POST /incidents/{incident_id}/investigate
-Content-Type: application/json
+POST /incidents/{incident_id}/investigate?include_timeline=true&include_events=true&investigation_depth=detailed&template_id=api_failure_v1
 ```
 
-Example request:
+**Query parameters** (`main.py`):
+
+| Parameter | Description |
+|-----------|-------------|
+| `include_timeline` | bool, default `true` |
+| `include_events` | bool, default `true` |
+| `investigation_depth` | `basic`, `detailed`, or `full` (default `detailed`) |
+| `template_id` | optional; e.g. `api_failure_v1`, `database_incident_v1`, `network_incident_v1` |
+| `investigation_timeout` | optional positive number; invalid/zero/negative → **422** (`Query(..., gt=0)`) |
+
+**Optional JSON body**: evidence fields (`log_text`, `system_events`, `error_messages`, `timestamps`, `source`) as `evidence_request`.
+
+In **demo mode**, the handler returns a **fixed mock JSON** (HTTP 200) before the investigation service runs; the timeout query parameter has **no effect**. In non-demo mode, `investigation_timeout` is forwarded into `InvestigationRequest.constraints` (see `test_investigation_timeout_api.py`).
+
+Example request body (optional evidence):
 
 ```json
 {
@@ -343,6 +388,8 @@ Templates provide investigation guidance for common incident categories. They ar
 
 The Ollama example model used in project documentation is `llama3.2:3b`. Its availability and runtime behavior must be verified in the target environment. The existence of the provider implementation does not prove that a live Ollama request has succeeded.
 
+**Note on `openai`:** listed in configuration; this repository initializes OpenAI as **mock** in `AnalysisService._initialize_providers()` (no separate OpenAI client module).
+
 ## Investigation Timeout
 
 The investigation endpoint supports an optional `investigation_timeout` query parameter in non-demo operation.
@@ -356,6 +403,11 @@ POST /incidents/{incident_id}/investigate?investigation_timeout=30
 A positive timeout value can be supplied. Invalid values such as zero, negative values, or non-numeric input should be rejected by request validation.
 
 In demo mode, the investigation path uses the demo behavior and does not exercise the normal AI investigation timeout path. Do not interpret a successful demo investigation as verification of live provider timeout behavior.
+
+| Mode | `investigation_timeout` on HTTP API |
+|------|-------------------------------------|
+| **Normal** (`DEMO_MODE` false) | Supported as query param; forwarded to `InvestigationRequest` |
+| **Demo** (`DEMO_MODE` true) | Ignored (mock response returned immediately) |
 
 ## Demo Mode
 
@@ -410,6 +462,16 @@ python3 -m pytest \
 
 Reported result during the October 27 audit: **187 passed**.
 
+#### Test count reconciliation
+
+| What | Count | Notes |
+|------|------:|-------|
+| **Recommended pytest suite** | **187** pass | Explicit file list above (includes `test_demo_db_setup.py`) |
+| **Same list without `test_demo_db_setup.py`** | **185** collected | Historical docs often cite **185** |
+| **`pytest test_*.py`** | **206** collected; **187** pass, **19** skipped | Skipped: entire `test_demo_mode.py` (run as script) |
+| **Demo script** | **19** functions | `DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db python3 test_demo_mode.py` |
+| **Legacy “271 tests” / “33 demo checks”** | — | Obsolete; do not use |
+
 Run all matching pytest files:
 
 ```bash
@@ -426,6 +488,12 @@ npx tsc --noEmit
 ```
 
 The October 27 audit reported this check passing.
+
+```bash
+npm run build
+# Guide chatbot only (mocked API; preview port 4188 default — see playwright.config.ts):
+PLAYWRIGHT_FORCE_NEW_SERVER=1 npx playwright test qa-guide-chat*.spec.ts
+```
 
 ### Full Playwright browser QA
 
@@ -457,14 +525,15 @@ PLAYWRIGHT_FORCE_NEW_SERVER=1 \
 npx playwright test --reporter=list
 ```
 
-The full matrix includes guide-chat, browser, final workflow, theme, and responsive tests. The reported 54/54 result was obtained with this API/build/preview configuration.
+The full matrix includes guide-chat, browser, final workflow, theme, and responsive tests. The reported 54/54 result was obtained with this API/build/preview configuration. With the advanced guide chatbot specs on this branch, the reported **`qa-guide-chat*.spec.ts`** result is **40/40** and the **120-case** guide evaluation is **120/120** topic and behavior match (see `qa-guide-chat-engine.spec.ts`).
 
-If a request unexpectedly fails with a CORS error, check the running API process. A stale server may not reflect the current `main.py` CORS configuration. Restart the API using the current project environment before diagnosing the frontend as the cause.
+If a request unexpectedly fails with a CORS error, check the running API process. A stale server may not reflect the current `main.py` CORS configuration (demo mode must allow **POST** for `/investigate`). Restart the API using the current project environment before diagnosing the frontend as the cause.
 
 The browser QA result is a local test result. It does not verify a live Render deployment.
 
 ## Known Limitations
 
+- **Investigation constraints:** Only `investigation_timeout` is wired from the HTTP investigate endpoint into `InvestigationRequest.constraints` when not in demo mode; other constraint keys are not exposed on the API.
 - **No authentication:** API authentication and authorization are not implemented. Do not expose a writable, non-demo instance publicly without appropriate access controls.
 - **No evidence collection UI:** The backend supports investigation evidence, but the frontend does not provide a dedicated evidence-submission form.
 - **External AI dependencies:** Ollama requires a working local service and model; OpenAI requires valid credentials and provider configuration.
@@ -487,25 +556,47 @@ Key files and directories include:
 
 ```text
 .
-├── main.py
-├── models.py
+├── main.py                     # FastAPI application
+├── models.py                   # Pydantic models and SQLite access
+├── demo_db_setup.py            # Demo DB seed copy for ephemeral hosts
+├── create_demo_db.py           # Regenerate incidents_demo.db
 ├── investigation_service.py
-├── investigation_templates.py
+├── investigation_templates.py  # api_failure_v1, database_incident_v1, network_incident_v1
 ├── template_engine.py
 ├── ai_provider.py
 ├── ollama_provider.py
+├── conftest.py                 # Pytest DB isolation
 ├── requirements.txt
-├── render.yaml
-├── create_demo_db.py
-├── test_*.py
-├── frontend/
-├── project_memory/
-├── README.md
-├── incidents.db
-└── incidents_demo.db
+├── render.yaml                 # Render blueprint (demo API + static frontend)
+├── incidents_demo.db           # Demo seed (public deploy)
+├── test_*.py                   # Pytest + demo script
+├── frontend/                   # React + Vite UI; guide chatbot on `/` only
+├── project_memory/             # Architecture, Render deploy, workflow docs
+└── README.md
 ```
 
+Local `incidents.db` is gitignored and not used on the public demo deploy.
+
 This is a representative structure. Check the repository for the current complete file list. Local database files may be ignored by Git and should not be committed unless the deployment design explicitly requires a demo seed database.
+
+## Development Notes
+
+### Homepage guide chatbot
+
+- **UI:** floating **Guide** on the dashboard (`/` only) — `GuideChatbot` in `MainLayout`
+- **Engine:** documentation-based local assistant (`guideChatEngine.ts`, `guideChatKnowledge.ts`); optional LLM provider hook (`guideChatProvider.ts`) with **no external API by default**
+- **Tests:** `frontend/qa-guide-chat*.spec.ts`, `frontend/playwright.config.ts`
+
+### Frontend (summary)
+
+- **Stack:** React 18, Vite, TypeScript, Tailwind (`frontend/`)
+- **Routes:** `/`, `/incidents`, `/incidents/:id`, `/analytics`, `/timeline`, `/settings`
+- **API URL:** local dev uses Vite proxy `/api`; production builds use `VITE_API_BASE_URL` (`frontend/src/lib/apiConfig.ts`)
+
+### Event history and deletion
+
+- **Delete does not remove event rows:** `DELETE /incidents/{id}` records an `incident_deleted` event, then deletes the incident row only.
+- `GET /incidents/{id}/timeline` may return **orphaned events** when the incident row is gone (404 only when both incident and events are missing).
 
 ## Security Considerations
 
@@ -527,7 +618,7 @@ The supplied Render configuration is intended for a demo deployment, not a fully
 
 ### Local demo
 
-Follow the Demo Mode section to start the API, then start the frontend with Vite for local development.
+Follow the Demo Mode section to start the API, then start the frontend with Vite for local development (`cd frontend && npm ci && npm run dev` — Vite proxies `/api`; no `VITE_API_BASE_URL` needed in dev).
 
 For a production-style local frontend preview, build with:
 
@@ -547,6 +638,18 @@ The repository includes `render.yaml` for a two-service setup:
 2. A Static Site for the React frontend.
 
 Configure the environment variables and build/start commands according to `render.yaml` and `project_memory/RENDER_DEPLOY.md`.
+
+**Pre-deploy checklist:**
+
+1. Seed demo data (`python3 create_demo_db.py` or commit `incidents_demo.db` if your deploy design requires it).
+2. Ensure `.env`, `frontend/.env.production`, and local `incidents.db` are **not** in Git (see root `.gitignore`).
+3. After first deploy, set `CORS_ALLOWED_ORIGINS` to your static site URL and redeploy the API.
+4. Set `VITE_API_BASE_URL` to your API URL (no trailing slash) and **redeploy the frontend** so Vite bakes it into the bundle.
+
+**Verify after deploy:**
+
+- `curl https://<api-host>/health` → `"status":"healthy"`, `"demo_mode":true`
+- Dashboard loads; deep links and refresh work; `POST /incidents` → `403` in demo mode
 
 | Concern | Deployment requirement |
 |---|---|
@@ -569,5 +672,5 @@ This project is part of the DevOps Incident Commander initiative. Refer to the r
 
 **Last updated:** October 27, 2026  
 **Version:** 1.0.0  
-**Status:** MVP — local verification reported; live deployment not verified.
+**Status:** MVP — local verification reported (pytest 187/187, demo script 19/19, Playwright 54/54 matrix, guide chatbot specs/eval as reported above); **live Render deployment not verified**.
 

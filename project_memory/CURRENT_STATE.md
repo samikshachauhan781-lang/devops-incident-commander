@@ -4,7 +4,12 @@
 
 **Primary Goal**: Final verification and documentation for DevOps Incident Commander — COMPLETED ✅
 
-**Current Focus**: Render public-demo deployment configuration (dual services, env-based API URL, demo DB bootstrap)
+**Current Focus**: Homepage guide chatbot (documentation-based, no paid API); Render demo deployment config
+
+### Homepage guide chatbot
+- Floating **Guide** button on `/` only (`MainLayout` + `GuideChatbot`)
+- Local Q&A via `guideChatKnowledge.ts` / `guideChatEngine.ts` (keyword matcher; ready to swap for LLM later)
+- Playwright: `frontend/qa-guide-chat.spec.ts` (6 tests); config `frontend/playwright.config.ts`
 
 ### Render deployment (prepared, not verified live)
 - `render.yaml` — API web service + static frontend, health check `/health`, SPA rewrite
@@ -50,22 +55,38 @@
 ✅ **Filters**: Service, severity, status dropdowns; search input; pagination
 ✅ **Navigation**: React Router transitions, page refresh on deep links
 ✅ **Incident deep link**: `/incidents/:id` loads incident from API (loading + not-found states)
-✅ **Browser tests**: Playwright `browser-test.spec.ts` — 9/9 passing
+✅ **Browser tests**: Playwright specs exist (`browser-test.spec.ts`, `qa-*.spec.ts`); **full Playwright matrix not re-verified** in the 2026-10-27 README audit (see `frontend/playwright.config.ts`)
 ✅ **Fixed sidebar shell**: Sidebar `position: fixed`, `100dvh`, no internal scroll; main content scrolls in `.app-main-scroll`
 ✅ **Theme / appearance**: `ThemeProvider` + `dic-appearance` localStorage; inline anti-flash script; dark mode + accent apply app-wide without refresh
-✅ **Release readiness**: `FINAL_QA_REPORT_20261027.md` — 185 pytest, 33 demo script, 48 Playwright (responsive + theme), code-split build
+✅ **Release readiness**: See **README accuracy audit (2026-10-27)** for current pytest/demo counts; older `FINAL_QA_REPORT_20261027.md` figures (e.g. 185 pytest, 33 demo) are **historical**
 ✅ **Bundle**: Route lazy-load + recharts/vendor chunks; no >500KB single-chunk warning
 
 ## Current Test Status
 
-### Test Command Results
-**Command**: `python3 -m pytest test_app.py test_day5_patch.py test_day6_filters.py test_day7_timeline.py test_day8_analytics.py test_final_day3_fixed.py test_check.py test_fixture.py test_ai_provider.py test_investigation.py test_investigation_timeout_api.py test_template_engine.py test_template_engine_documentation.py test_template_loading_simple.py -v`
-**Date/Time**: 2026-10-27 09:45:00 +05:30
-**Working Directory**: `/Users/samiksha/Desktop/devops-incident-commander`
+**Aligned with README accuracy audit (2026-10-27).** Historical doc figures: **271** total tests (obsolete project reports) and **33** demo checks (superseded by **19** functions in `test_demo_mode.py` today).
 
-**Results**: 185 passed, 0 failed
+### Recommended pytest suite (explicit file list)
+**Command** (includes `test_demo_db_setup.py`; see `README.md` Testing section):
 
-### Individual Test File Results
+```bash
+python3 -m pytest test_app.py test_day5_patch.py test_day6_filters.py test_day7_timeline.py \
+  test_day8_analytics.py test_final_day3_fixed.py test_check.py test_fixture.py \
+  test_ai_provider.py test_investigation.py test_investigation_timeout_api.py \
+  test_template_engine.py test_template_engine_documentation.py \
+  test_template_loading_simple.py test_demo_db_setup.py -q
+```
+
+**Date/Time**: 2026-10-27 (README audit)  
+**Results**: **187 passed**, 0 failed (~3.5s)
+
+**Note:** The same file list **without** `test_demo_db_setup.py` collects **185** tests (historical docs often cited **185**).
+
+### Full pytest glob
+**Command**: `python3 -m pytest test_*.py -q`  
+**Collect**: `python3 -m pytest test_*.py --collect-only -q` → **206** tests collected  
+**Results**: **187 passed**, **19 skipped** (skipped: entire `test_demo_mode.py` via `pytestmark`; not executed under pytest)
+
+### Individual Test File Results (recommended suite)
 | Test File | Tests | Status |
 |-----------|-------|--------|
 | test_app.py | 9 | ✅ PASS |
@@ -82,11 +103,16 @@
 | test_template_engine.py | 16 | ✅ PASS |
 | test_template_engine_documentation.py | 13 | ✅ PASS |
 | test_template_loading_simple.py | 1 | ✅ PASS |
-| **Total** | **185 passed** | **✅ ALL PASS** |
+| test_demo_db_setup.py | 2 | ✅ PASS |
+| **Total** | **187 passed** | **✅ ALL PASS** |
 
-### Demo Mode Tests (Standalone Script)
-**Command**: `DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db python3 test_demo_mode.py`
-**Results**: 33/33 passing ✅
+### Demo Mode Tests (Standalone Script — not pytest)
+`test_demo_mode.py` is **skipped** during `python3 -m pytest test_*.py` (19 skipped items). Run it **separately**:
+
+**Command**: `DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db python3 test_demo_mode.py`  
+**Results**: **19** test functions in `__main__`, all passing ✅ (2026-10-27 README audit)
+
+*(Historical: some older reports described **33** demo checks; current script defines **19**.)*
 
 ### Timeout Validation Test Coverage (Task 7.6 Part 5)
 | Test | Layer | Verifies |
@@ -172,6 +198,12 @@ Template Engine (template_engine.py, investigation_templates.py)
 3. **Demo toasts**: Create Incident, notifications, sign out — wired in layout/dashboard
 4. **Timeline / Analytics / Settings**: Build verified; full Playwright coverage not expanded this session
 
+### Not verified in 2026-10-27 README audit
+- **Render** production URLs / live deploy (config only: `render.yaml`, `RENDER_DEPLOY.md`)
+- **Full Playwright** suite (all `qa-*.spec.ts` + `browser-test.spec.ts` together)
+- **Ollama** against a live local Ollama instance (provider code exists; runtime not exercised in audit)
+- **Production `incidents.db` row count** (e.g. “1144 incidents” — not re-counted in audit)
+
 ### Unknown
 - Performance benchmarks under load
 
@@ -199,10 +231,12 @@ Template Engine (template_engine.py, investigation_templates.py)
 ## Project Health
 
 ### Test Suite
-- **Total Tests**: 185 backend + 33 demo mode = 218 verified
-- **Pass Rate**: 100% (all passing when run correctly)
-- **Last Run**: 2026-10-27 09:45:00 +05:30
-- **Status**: HEALTHY
+- **Pytest (recommended suite)**: **187** passed (`test_demo_db_setup.py` included)
+- **Pytest (`test_*.py`)**: **206** collected → **187** passed, **19** skipped (`test_demo_mode.py`)
+- **Demo script (standalone)**: **19** passed — run with `DEMO_MODE=true DEMO_DB_PATH=incidents_demo.db python3 test_demo_mode.py`
+- **Pass Rate**: 100% when run with the commands above (2026-10-27 README audit)
+- **Last Run**: 2026-10-27 (README accuracy audit)
+- **Status**: HEALTHY (backend + demo script in-repo); **Render deploy** and **full Playwright suite** not verified in that audit
 
 ### Code Quality
 - **Transaction Management**: ✅ Verified
@@ -219,10 +253,10 @@ Template Engine (template_engine.py, investigation_templates.py)
 
 ## Known Limitations (Pre-existing, Non-Regression)
 
-### 1. API Hardcodes `constraints={}`
-- **Issue**: The `/incidents/{id}/investigate` endpoint hardcodes `constraints={}` in the `InvestigationRequest` (line ~586 of `main.py`).
-- **Impact**: API callers cannot supply a request-specific `investigation_timeout`. The timeout validation logic exists in all three layers (service, Ollama, mock) but is only exercisable via direct service/provider calls or tests.
-- **Status**: Pre-existing limitation, not a regression.
+### 1. Investigation constraints on HTTP API
+- **Issue**: Only `investigation_timeout` is wired from the investigate endpoint into `InvestigationRequest.constraints` when **not** in demo mode (`main.py`; `test_investigation_timeout_api.py`). Other constraint keys are not exposed on the API.
+- **Demo mode**: `investigation_timeout` query param has no effect (mock response returned before the investigation service runs).
+- **Status**: Documented in README (2026-10-27 audit).
 
 ### 2. Standalone `call_with_timeout()` Thread Cleanup
 - **Issue**: The `call_with_timeout()` utility function (retained for other code) shows delayed daemon-thread cleanup when invoked directly with very short timeouts (e.g., 1→9 threads after 20 rapid timeouts).
@@ -245,7 +279,7 @@ Template Engine (template_engine.py, investigation_templates.py)
 
 ## Summary
 
-The DevOps Incident Commander project is **STABLE AND VERIFIED** with all tests passing (185/185 backend + 33/33 demo mode). The main achievements include:
+The DevOps Incident Commander project is **STABLE AND VERIFIED** in-repo with **187/187** pytest (recommended suite) and **19/19** demo script checks (2026-10-27 README audit). The main achievements include:
 
 1. ✅ Database transaction management fixed
 2. ✅ Test database isolation working
