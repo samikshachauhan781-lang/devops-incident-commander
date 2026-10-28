@@ -1,16 +1,40 @@
 import {
   GUIDE_AMBIGUOUS_CLARIFY,
-  GUIDE_CAPABILITIES,
+  GUIDE_ACK,
+  GUIDE_ACK_NO_CONTEXT,
+  GUIDE_CLOSING,
+  GUIDE_CLOSING_SOFT,
   GUIDE_EMPTY_PROMPT,
   GUIDE_FALLBACK_ANSWER,
+  GUIDE_FOLLOWUP_NO_CONTEXT,
   GUIDE_FOLLOWUP_PROMPTS,
+  GUIDE_GREETING_DEFAULT,
+  GUIDE_GREETING_REPEAT,
+  GUIDE_GREETING_RETURN,
+  GUIDE_GREETING_TIME,
+  GUIDE_INTRO_WHO,
   GUIDE_SECURITY_REFUSAL,
+  GUIDE_THANKS,
+  GUIDE_THANKS_HELPFUL,
   GUIDE_TOPICS,
   type GuideTopicEntry,
 } from './guideChatKnowledge';
 import type { GuideReply, GuideSessionContext } from './guideChatTypes';
 
 export type { GuideReply, GuideSessionContext } from './guideChatTypes';
+
+/** Topic IDs that should not replace session `lastTopicId` (social turns). */
+export const CONVERSATIONAL_TOPIC_IDS = new Set([
+  'conv-greeting',
+  'conv-thanks',
+  'conv-ack',
+  'conv-closing',
+  'conv-intro',
+]);
+
+export function isConversationalTopicId(topicId: string): boolean {
+  return CONVERSATIONAL_TOPIC_IDS.has(topicId);
+}
 
 const MIN_SCORE = 3;
 const CLARIFY_GAP_RATIO = 0.85;
@@ -28,8 +52,10 @@ const FOLLOWUP_PATTERNS = [
   /^continue$/i,
   /^go on$/i,
   /^what else$/i,
+  /^what('s| is) next\??$/i,
   /^and then\??$/i,
   /^explain that$/i,
+  /^can you explain that\??$/i,
   /^can you elaborate$/i,
   /^yes$/i,
   /^ok(ay)?\s+(and|then)?/i,
@@ -123,6 +149,163 @@ function isSecuritySensitive(query: string): boolean {
 function isFollowUp(query: string): boolean {
   const q = query.trim();
   return FOLLOWUP_PATTERNS.some((re) => re.test(q));
+}
+
+const GREETING_PATTERNS = [
+  /^good\s+(morning|afternoon|evening)\b[\s!.?,]*$/i,
+];
+
+function isGreetingOnly(query: string): boolean {
+  const q = normalizeGuideText(query);
+  if (/^good (morning|afternoon|evening)\b/.test(q)) {
+    return q.split(' ').length <= 4;
+  }
+  if (/^(hi|hello|hey|howdy|greetings)\b/.test(q)) {
+    const rest = q.replace(/^(hi|hello|hey|howdy|greetings)\b\s*/, '').trim();
+    if (!rest) return true;
+    return /^(there|again|you|folks|team)[\s!.?,]*$/.test(rest);
+  }
+  return GREETING_PATTERNS.some((re) => re.test(query.trim()));
+}
+
+const THANKS_PATTERNS = [
+  /^thanks?\b/i,
+  /^thank\s+you\b/i,
+  /^that('s| is)\s+(helpful|useful)\b/i,
+  /^appreciate\s+it\b/i,
+];
+
+const ACK_PATTERNS = [
+  /^(okay|ok|k)\b[\s!.?,]*$/i,
+  /^(got it|understood)\b[\s!.?,]*$/i,
+  /^(great|cool|perfect|sounds good|alright|nice)\b[\s!.?,]*$/i,
+];
+
+const CLOSING_PATTERNS = [
+  /^(bye|goodbye|see you( later)?|talk to you later)\b[\s!.?,]*$/i,
+  /^that('s| is)\s+all(\s+for\s+now)?\b[\s!.?,]*$/i,
+  /^(done|finished)\s+for\s+now\b[\s!.?,]*$/i,
+  /^have a good (one|day|night)\b[\s!.?,]*$/i,
+];
+
+const INTRO_PATTERNS = [
+  /^who are you\??$/i,
+  /^what are you\??$/i,
+  /^(introduce yourself|tell me who you are)\b/i,
+];
+
+function matchesAny(patterns: RegExp[], text: string): boolean {
+  const t = text.trim();
+  return patterns.some((re) => re.test(t));
+}
+
+function greetingReply(query: string, context: GuideSessionContext): GuideReply {
+  const q = normalizeGuideText(query);
+  let answer = GUIDE_GREETING_DEFAULT;
+  if (/good morning/.test(q)) answer = GUIDE_GREETING_TIME.morning;
+  else if (/good afternoon/.test(q)) answer = GUIDE_GREETING_TIME.afternoon;
+  else if (/good evening/.test(q)) answer = GUIDE_GREETING_TIME.evening;
+  else if (context.lastTopicId && !isConversationalTopicId(context.lastTopicId)) {
+    answer = GUIDE_GREETING_RETURN;
+  } else if (context.lastUserQuestion && isGreetingOnly(context.lastUserQuestion)) {
+    answer = GUIDE_GREETING_REPEAT;
+  }
+  return {
+    topicId: 'conv-greeting',
+    answer,
+    behavior: 'answer',
+    confidence: 0.95,
+    followUpSuggestions: GUIDE_FOLLOWUP_PROMPTS.slice(0, 3),
+  };
+}
+
+function tryConversationalTurn(
+  query: string,
+  context: GuideSessionContext,
+): GuideReply | null {
+  const trimmed = query.trim();
+  if (isGreetingOnly(trimmed)) {
+    return greetingReply(trimmed, context);
+  }
+  if (matchesAny(INTRO_PATTERNS, trimmed)) {
+    return {
+      topicId: 'conv-intro',
+      answer: GUIDE_INTRO_WHO,
+      behavior: 'answer',
+      confidence: 0.95,
+      followUpSuggestions: ['What can this platform do?', 'What is demo mode?', 'How does AI investigation work?'],
+    };
+  }
+  if (matchesAny(THANKS_PATTERNS, trimmed)) {
+    const hasTopic = context.lastTopicId && !isConversationalTopicId(context.lastTopicId);
+    return {
+      topicId: 'conv-thanks',
+      answer: hasTopic ? GUIDE_THANKS_HELPFUL : GUIDE_THANKS,
+      behavior: 'answer',
+      confidence: 0.95,
+      followUpSuggestions: hasTopic
+        ? ['Tell me more', 'What else?', 'What is demo mode?']
+        : GUIDE_FOLLOWUP_PROMPTS.slice(0, 3),
+    };
+  }
+  if (matchesAny(ACK_PATTERNS, trimmed)) {
+    const hasTopic = context.lastTopicId && !isConversationalTopicId(context.lastTopicId);
+    return {
+      topicId: 'conv-ack',
+      answer: hasTopic ? GUIDE_ACK : GUIDE_ACK_NO_CONTEXT,
+      behavior: 'answer',
+      confidence: 0.95,
+      followUpSuggestions: hasTopic
+        ? ['Tell me more', 'What\'s next?', 'What else?']
+        : GUIDE_FOLLOWUP_PROMPTS.slice(0, 3),
+    };
+  }
+  if (matchesAny(CLOSING_PATTERNS, trimmed)) {
+    return {
+      topicId: 'conv-closing',
+      answer: /all for now|done for now|finished for now/i.test(trimmed)
+        ? GUIDE_CLOSING_SOFT
+        : GUIDE_CLOSING,
+      behavior: 'answer',
+      confidence: 0.95,
+      followUpSuggestions: [],
+    };
+  }
+  return null;
+}
+
+function buildFollowUpReply(prev: GuideTopicEntry, query: string): GuideReply {
+  const q = normalizeGuideText(query);
+  const isWhatNext = /what(?:'s| is) next/.test(q);
+
+  if (isWhatNext && prev.relatedTopicIds?.length) {
+    const related = prev.relatedTopicIds
+      .map((id) => topicById(id))
+      .filter((t): t is GuideTopicEntry => Boolean(t));
+    if (related.length > 0) {
+      const bullets = related.map((t) => `- **${t.title}** — ask me about "${t.title.toLowerCase()}"`).join('\n');
+      return {
+        topicId: prev.id,
+        answer: `After **${prev.title}**, good next steps:\n\n${bullets}\n\nOr say **tell me more** to revisit the previous answer.`,
+        behavior: 'answer',
+        confidence: 0.88,
+        followUpSuggestions: related.map((t) => t.title).slice(0, 3),
+      };
+    }
+  }
+
+  const lead =
+    /^(yes|ok|okay)\b/.test(q) || /explain that|can you explain/.test(q)
+      ? `Sure — more on **${prev.title}**:`
+      : `Continuing **${prev.title}**:`;
+
+  return {
+    topicId: prev.id,
+    answer: `${lead}\n\n${prev.answer}`,
+    behavior: 'answer',
+    confidence: 0.85,
+    followUpSuggestions: prev.followUpSuggestions ?? GUIDE_FOLLOWUP_PROMPTS.slice(0, 3),
+  };
 }
 
 const DIRECT_ROUTES: { pattern: RegExp; topicId: string }[] = [
@@ -239,26 +422,26 @@ export function findGuideAnswer(
   if (isFollowUp(trimmed) && context.lastTopicId) {
     const prev = topicById(context.lastTopicId);
     if (prev) {
-      return {
-        ...buildAnswer(prev),
-        topicId: prev.id,
-        confidence: 0.85,
-        answer: `Continuing from **${prev.title}**:\n\n${prev.answer}`,
-      };
+      return buildFollowUpReply(prev, trimmed);
     }
   }
 
-  const tokens = queryTokens(trimmed);
-
-  if (/^(hi|hello|hey|thanks|thank you)\b/i.test(trimmed)) {
+  if (isFollowUp(trimmed) && !context.lastTopicId) {
     return {
-      topicId: 'capabilities',
-      answer: GUIDE_CAPABILITIES,
-      behavior: 'answer',
-      confidence: 0.65,
+      topicId: 'clarify',
+      answer: GUIDE_FOLLOWUP_NO_CONTEXT,
+      behavior: 'clarify',
+      confidence: 0.5,
       followUpSuggestions: GUIDE_FOLLOWUP_PROMPTS.slice(0, 4),
     };
   }
+
+  const conversational = tryConversationalTurn(trimmed, context);
+  if (conversational) {
+    return conversational;
+  }
+
+  const tokens = queryTokens(trimmed);
 
   const direct = tryDirectRoute(trimmed);
   if (direct) {

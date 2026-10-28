@@ -29,6 +29,12 @@ test.describe('Guide engine — unit', () => {
     expect(r.answer.toLowerCase()).toContain('demo');
   });
 
+  test('what is next with context suggests related topics', () => {
+    const r = findGuideAnswer("what's next?", { lastTopicId: 'what-is' });
+    expect(r.topicId).toBe('what-is');
+    expect(r.answer.toLowerCase()).toContain('next');
+  });
+
   test('empty and unknown inputs fallback safely', () => {
     expect(findGuideAnswer('').behavior).toBe('fallback');
     expect(findGuideAnswer('xyzzy unknown qwerty').topicId).toBe('fallback');

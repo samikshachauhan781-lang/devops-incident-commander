@@ -3,6 +3,7 @@ import { MessageCircle, Send, X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { GUIDE_SUGGESTED_QUESTIONS, GUIDE_WELCOME } from '../../lib/guideChatKnowledge';
 import { getGuideReply } from '../../lib/guideChatProvider';
+import { isConversationalTopicId } from '../../lib/guideChatEngine';
 import type { GuideSessionContext } from '../../lib/guideChatTypes';
 import { cn } from '@utils/cn';
 
@@ -100,9 +101,10 @@ export default function GuideChatbot({ active = true }: GuideChatbotProps) {
 
     try {
       const reply = await getGuideReply(question, sessionRef.current);
+      const preserveTopic = isConversationalTopicId(reply.topicId);
       if (reply.behavior === 'answer' && reply.topicId !== 'empty' && reply.topicId !== 'fallback') {
         sessionRef.current = {
-          lastTopicId: reply.topicId,
+          lastTopicId: preserveTopic ? sessionRef.current.lastTopicId : reply.topicId,
           lastUserQuestion: question,
         };
       }

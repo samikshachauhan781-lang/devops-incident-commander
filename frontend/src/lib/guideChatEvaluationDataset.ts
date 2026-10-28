@@ -23,7 +23,7 @@ export const GUIDE_EVALUATION_CASES: GuideEvaluationCase[] = [
   base('ov-9', 'who is this for', 'purpose', 'answer'),
   base('ov-10', 'what can you help me with', 'capabilities', 'answer'),
   base('ov-11', 'what can this platform do', 'capabilities', 'answer'),
-  base('ov-12', 'hello', 'capabilities', 'answer'),
+  base('ov-12', 'hello', 'conv-greeting', 'answer'),
 
   // Navigation (8)
   base('nav-1', 'how do I use the dashboard', 'navigation', 'answer'),
@@ -142,6 +142,20 @@ export const GUIDE_EVALUATION_CASES: GuideEvaluationCase[] = [
   base('fu-4', 'what else', 'severity', 'answer', { lastTopicId: 'severity' }),
   base('fu-5', 'yes', 'ai-investigation', 'answer', { lastTopicId: 'ai-investigation' }),
   base('fu-6', 'more', 'investigation-results', 'answer', { lastTopicId: 'investigation-results' }),
+
+  // Conversational (12)
+  base('conv-1', 'hey', 'conv-greeting', 'answer'),
+  base('conv-2', 'good morning', 'conv-greeting', 'answer'),
+  base('conv-3', 'who are you?', 'conv-intro', 'answer'),
+  base('conv-4', 'thank you', 'conv-thanks', 'answer'),
+  base('conv-5', 'thanks that was helpful', 'conv-thanks', 'answer'),
+  base('conv-6', 'got it', 'conv-ack', 'answer'),
+  base('conv-7', 'understood', 'conv-ack', 'answer'),
+  base('conv-8', 'okay', 'conv-ack', 'answer'),
+  base('conv-9', 'bye', 'conv-closing', 'answer'),
+  base('conv-10', 'goodbye', 'conv-closing', 'answer'),
+  base('conv-11', "that's all for now", 'conv-closing', 'answer'),
+  base('conv-12', 'tell me more', 'clarify', 'clarify'),
 
   // Paraphrase / typo mix (12)
   base('para-1', 'explain devops incidnet commander', 'what-is', 'answer'),
